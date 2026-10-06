@@ -28,11 +28,10 @@ Each course follows the same layout:
 
 Static site, no framework, deployed as a Cloudflare Worker with static assets. Every push to `main` redeploys.
 
-- `build_index.py` generates `index.html` for the root and each course from lesson `<title>` tags. Cloudflare runs it as the build command; run it locally to preview:
+- `build_index.py` builds the site into `dist/` (gitignored): copies each course without repo-only files (`.md` notes, learning records, dotfiles), prefixes lesson and reference `<title>` tags with `Learning - `, and generates `index.html` for the root and each course. Write lesson titles without the prefix. Cloudflare runs it as the build command; run it locally to preview `dist/`:
 
   ```sh
   python build_index.py
   ```
 
-- `wrangler.jsonc` holds the Worker config.
-- `.assetsignore` keeps repo-only files (`.md` notes, learning records, build script) off the site. Lessons link to `.md` notes on GitHub instead.
+- `wrangler.jsonc` holds the Worker config and serves `dist/`. Lessons link to `.md` notes on GitHub.

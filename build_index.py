@@ -1,16 +1,24 @@
-"""Generate index.html pages for the site root and each course folder.
+"""Build the static site into dist/.
 
-A course is any top-level folder containing a lessons/ directory.
+Copies each course (minus repo-only files), prefixes lesson and reference
+<title> tags with TITLE_PREFIX, and generates index.html for the site root
+and each course. A course is any top-level folder containing a lessons/ directory.
 Run after adding lessons:  python build_index.py
-Stdlib only, so it also runs as the Cloudflare Pages build command.
+Stdlib only, so it also runs as the Cloudflare build command.
 """
 
 import html
 import re
+import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+DIST = ROOT / "dist"
+SECTIONS = ("lessons", "reference")
+# Repo-only files kept off the site; lessons link to .md notes on GitHub instead.
+REPO_ONLY = shutil.ignore_patterns("*.md", "learning-records", ".*", "Thumbs.db", "desktop.ini")
 REPO_URL = "https://github.com/Penk13/learning/blob/main"
+TITLE_PREFIX = "Learning - "
 
 STYLE = """
 :root {
@@ -57,9 +65,18 @@ def page(title, body):
 """
 
 
+TITLE_RE = re.compile(r"<title>(.*?)</title>", re.S | re.I)
+
+
 def html_title(path):
-    match = re.search(r"<title>(.*?)</title>", path.read_text(encoding="utf-8"), re.S | re.I)
+    match = TITLE_RE.search(path.read_text(encoding="utf-8"))
     return html.unescape(match.group(1).strip()) if match else path.stem
+
+
+def prefix_title(path):
+    text = path.read_text(encoding="utf-8")
+    prefixed = TITLE_RE.sub(lambda m: f"<title>{html.escape(TITLE_PREFIX)}{m.group(1).strip()}</title>", text, count=1)
+    path.write_text(prefixed, encoding="utf-8", newline="")
 
 
 def mission(course):
@@ -91,24 +108,30 @@ def build_course(course):
         f"<h1>{html.escape(title)}</h1>",
         f"<p>{html.escape(summary)}</p>" if summary else "",
     ]
-    for section in ("lessons", "reference"):
+    out = DIST / course.name
+    shutil.copytree(course, out, ignore=REPO_ONLY)
+    for section in SECTIONS:
         files = sorted((course / section).glob("*.html")) if (course / section).is_dir() else []
         if files:
             parts.append(f"<h2>{section.capitalize()}</h2>")
             parts.append(link_list([(f"{section}/{f.name}", html_title(f), "") for f in files]))
+        for f in files:
+            prefix_title(out / section / f.name)
     docs = [name for name in ("MISSION", "RESOURCES", "NOTES") if (course / f"{name}.md").exists()]
     if docs:
         parts.append("<h2>Notes</h2>")
         parts.append('<div class="links">' + "".join(
             f'<a href="{REPO_URL}/{course.name}/{name}.md">{name.capitalize()}</a>' for name in docs
         ) + "</div>")
-    (course / "index.html").write_text(page(title, "\n".join(p for p in parts if p)), encoding="utf-8")
+    (out / "index.html").write_text(page(TITLE_PREFIX + title, "\n".join(p for p in parts if p)), encoding="utf-8")
     lesson_count = len(list((course / "lessons").glob("*.html")))
     return title, lesson_count
 
 
 def main():
-    courses = sorted(d for d in ROOT.iterdir() if (d / "lessons").is_dir())
+    shutil.rmtree(DIST, ignore_errors=True)
+    DIST.mkdir()
+    courses = sorted(d for d in ROOT.iterdir() if d != DIST and (d / "lessons").is_dir())
     items = []
     for course in courses:
         title, count = build_course(course)
@@ -119,8 +142,8 @@ def main():
         "<h2>Courses</h2>",
         link_list(items),
     ])
-    (ROOT / "index.html").write_text(page("Learning", body), encoding="utf-8")
-    print(f"Built index for {len(courses)} courses.")
+    (DIST / "index.html").write_text(page("Learning", body), encoding="utf-8")
+    print(f"Built {len(courses)} courses into {DIST.name}/.")
 
 
 if __name__ == "__main__":
