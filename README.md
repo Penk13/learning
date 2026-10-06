@@ -2,6 +2,8 @@
 
 Personal study workspace. Each folder is a self-contained course with lessons, references, and progress notes.
 
+**Live site:** https://learning.penk13.workers.dev (protected by Cloudflare Access)
+
 ## Courses
 
 | Folder | Topic |
@@ -24,10 +26,13 @@ Each course follows the same layout:
 
 ## Site
 
-Static site, no framework. `build_index.py` generates `index.html` for the root and each course from lesson `<title>` tags. Run it after adding lessons:
+Static site, no framework, deployed as a Cloudflare Worker with static assets. Every push to `main` redeploys.
 
-```sh
-python build_index.py
-```
+- `build_index.py` generates `index.html` for the root and each course from lesson `<title>` tags. Cloudflare runs it as the build command; run it locally to preview:
 
-Deployed as a Cloudflare Worker with static assets (`wrangler.jsonc`). Build command `python build_index.py`; `.assetsignore` keeps repo-only files off the site.
+  ```sh
+  python build_index.py
+  ```
+
+- `wrangler.jsonc` holds the Worker config.
+- `.assetsignore` keeps repo-only files (`.md` notes, learning records, build script) off the site. Lessons link to `.md` notes on GitHub instead.
