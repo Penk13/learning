@@ -30,4 +30,4 @@ Static site, no framework. `build_index.py` generates `index.html` for the root 
 python build_index.py
 ```
 
-Deployed on Cloudflare Pages (build command `python build_index.py`, output directory `/`).
+Deployed as a Cloudflare Worker with static assets (`wrangler.jsonc`). Build command `python build_index.py`; `.assetsignore` keeps repo-only files off the site.

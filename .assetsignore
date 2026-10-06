@@ -1,0 +1,8 @@
+# Keep repo-only files out of the deployed site
+.git
+.gitignore
+.assetsignore
+wrangler.jsonc
+build_index.py
+*.md
+**/learning-records
