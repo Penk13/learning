@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learning</title>
+<style>
+:root {
+  --bg: #f6f3ed; --card: #fffdf9; --ink: #25313b; --muted: #66727a;
+  --line: #d9d4ca; --accent: #0f766e;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #14191d; --card: #1c2329; --ink: #e6e9eb; --muted: #9aa5ad;
+          --line: #2e383f; --accent: #4fd1c5; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.6; }
+main { width: min(100% - 2rem, 760px); margin: 0 auto; padding: 2.5rem 0 4rem; }
+h1 { font-family: Georgia, serif; font-size: clamp(2rem, 6vw, 2.8rem); margin: 0.3rem 0 0.5rem; }
+h2 { font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 2rem 0 0.6rem; }
+p { color: var(--muted); margin: 0 0 1rem; }
+a { color: var(--accent); text-decoration: none; }
+.crumb { font-size: 0.9rem; }
+ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.6rem; }
+li a { display: block; padding: 0.9rem 1rem; background: var(--card); border: 1px solid var(--line);
+       border-radius: 10px; color: var(--ink); }
+li a:hover, li a:focus-visible { border-color: var(--accent); }
+li a small { display: block; color: var(--muted); margin-top: 0.2rem; }
+.links { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+<h1>Learning</h1>
+<p>Study workspace: lessons, cheat sheets, and notes.</p>
+<h2>Courses</h2>
+<ul>
+<li><a href="ddia-2e/index.html">Designing Data-Intensive Applications (2nd edition)<small>2 lessons</small></a></li>
+<li><a href="django-job-preparation/index.html">Django Job Preparation<small>1 lesson</small></a></li>
+<li><a href="dotnet-job-preparation/index.html">.NET Technical Interview Preparation<small>1 lesson</small></a></li>
+<li><a href="missing-semester/index.html">The Missing Semester for Daily Development<small>2 lessons</small></a></li>
+<li><a href="react-job-preparation/index.html">React JS Job Preparation<small>1 lesson</small></a></li>
+</ul>
+</main>
+</body>
+</html>

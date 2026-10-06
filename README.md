@@ -6,18 +6,28 @@ Personal study workspace. Each folder is a self-contained course with lessons, r
 
 | Folder | Topic |
 | --- | --- |
-| [.NET Job Preparation](./.NET%20Job%20Preparation) | ASP.NET Core fundamentals |
-| [Designing Data-Intensive Applications 2nd Edition](./Designing%20Data-Intensive%20Applications%202nd%20Edition) | DDIA 2e chapter study |
-| [Django Job Preparation](./Django%20Job%20Preparation) | Python / Django fundamentals |
-| [React JS Job Preparation](./React%20JS%20Job%20Preparation) | React fundamentals |
-| [The Missing Semester](./The%20Missing%20Semester) | Shell, scripting, dev tooling |
+| [dotnet-job-preparation](./dotnet-job-preparation) | ASP.NET Core fundamentals |
+| [ddia-2e](./ddia-2e) | Designing Data-Intensive Applications, 2nd ed. |
+| [django-job-preparation](./django-job-preparation) | Python / Django fundamentals |
+| [react-job-preparation](./react-job-preparation) | React fundamentals |
+| [missing-semester](./missing-semester) | Shell, scripting, dev tooling |
 
 ## Structure
 
 Each course follows the same layout:
 
-- `MISSION.md` — goal and scope
-- `lessons/` — HTML lessons (open in browser)
-- `reference/` — cheatsheets
-- `learning-records/` — progress log
-- `NOTES.md`, `RESOURCES.md` — notes and external links
+- `MISSION.md`: goal and scope
+- `lessons/`: HTML lessons (open in browser)
+- `reference/`: cheatsheets
+- `learning-records/`: progress log
+- `NOTES.md`, `RESOURCES.md`: notes and external links
+
+## Site
+
+Static site, no framework. `build_index.py` generates `index.html` for the root and each course from lesson `<title>` tags. Run it after adding lessons:
+
+```sh
+python build_index.py
+```
+
+Deployed on Cloudflare Pages (build command `python build_index.py`, output directory `/`).
