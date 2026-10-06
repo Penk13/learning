@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DDIA Ch.1 Cheat Sheet</title>
+<link rel="stylesheet" href="../assets/course.css">
+<style>
+  main { max-width: 900px; }
+  .grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card ul { margin: .3em 0; padding-left: 1.1em; }
+  .card li { margin: .15em 0; }
+</style>
+</head>
+<body>
+<main>
+<div class="kicker">DDIA 2nd ed. · Reference · Chapter 1 (pp. 1–25)</div>
+<h1>Trade-Offs in Data Systems Architecture</h1>
+<p class="muted">One page. Print it. Terms → <a href="glossary.html">glossary</a>.</p>
+
+<div class="grid">
+  <div class="card rel">
+    <h4 class="c-rel">🛠 Operational vs 📊 Analytical</h4>
+    <table class="compare">
+      <tr><th></th><th>OLTP</th><th>OLAP</th></tr>
+      <tr><td>Read</td><td>point query by key</td><td>aggregate many rows</td></tr>
+      <tr><td>Write</td><td>CRUD single records</td><td>bulk ETL / stream</td></tr>
+      <tr><td>Queries</td><td>fixed, in app code</td><td>ad hoc</td></tr>
+      <tr><td>Data</td><td>latest state</td><td>history of events</td></tr>
+      <tr><td>Size</td><td>GB–TB</td><td>TB–PB</td></tr>
+    </table>
+    <ul>
+      <li>Real-time/product analytics (Pinot, Druid, ClickHouse) = OLAP queries, low latency, user-facing.</li>
+      <li>HTAP = both in one system; doesn't replace the warehouse.</li>
+    </ul>
+  </div>
+
+  <div class="card sca">
+    <h4 class="c-sca">🏛 Warehouse · 🌊 Lake · 🔁 Pipelines</h4>
+    <ul>
+      <li>Warehouse = separate read-only copy, relational/SQL, for analysts.</li>
+      <li>Why separate: <b>silos</b>, wrong layout, perf impact on users, network/compliance.</li>
+      <li><b>ETL</b> (or ELT) moves data in; SaaS via connectors.</li>
+      <li>Lake = files, any format, no schema; cheap object storage; for data scientists. Sushi principle: raw is better.</li>
+      <li>Streams → seconds-level analytics. <b>Reverse ETL</b> → results back to production.</li>
+    </ul>
+  </div>
+
+  <div class="card mai">
+    <h4 class="c-mai">📌 System of record vs derived</h4>
+    <ul>
+      <li><b>System of record</b>: source of truth, written first, each fact once.</li>
+      <li><b>Derived</b>: cache, index, materialized view, warehouse copy, ML model. Redundant; rebuildable.</li>
+      <li>Disagreement → system of record wins.</li>
+      <li>Role depends on <i>how you use</i> the tool, not the tool.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>☁ Cloud vs 🏠 self-host</h4>
+    <ul>
+      <li>Core competency → in-house; commodity → vendor.</li>
+      <li>Self-host cheaper when: skills exist + load predictable.</li>
+      <li>Cloud better when: unfamiliar system, <b>spiky load</b>.</li>
+      <li>Cloud cons: no control, outages, no internals, <b>lock-in</b>, sanctions, trust for security.</li>
+      <li>Cloud native: <b>separate storage &amp; compute</b>, object storage, local disk = cache, multitenant.</li>
+      <li>Ops: capacity planning → financial planning; still need security, monitoring, integration.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>🌐 Distributed vs 🖥 single-node</h4>
+    <ul>
+      <li>Reasons: inherent, cross-service, fault tolerance, scalability, latency, elasticity, special hardware, legal residency, sustainability.</li>
+      <li>Costs: timeouts (did it happen?), network ≫ function call, hard debugging (observability/tracing), cross-service consistency.</li>
+      <li><b>Prefer single-node if it fits.</b></li>
+      <li>Microservices = people problem solution; own DB each.</li>
+      <li>Serverless = pay per execution; limits, cold starts.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>⚖ Law &amp; society</h4>
+    <ul>
+      <li>GDPR, CCPA, EU AI Act (locally: UU PDP).</li>
+      <li>Right to be forgotten vs immutable logs &amp; derived data.</li>
+      <li>Storage cost includes leak, fine &amp; user-safety risk.</li>
+      <li><b>Data minimization</b>: purpose-limited, not kept longer than needed.</li>
+      <li>PCI (payments), SOC 2 Type 2 (vendors).</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Design-review questions (steal these)</h3>
+<ol>
+  <li>Is this workload operational or analytical? Are we running analytics on the OLTP database?</li>
+  <li>What is the system of record for each piece of data? What is derived, and what keeps it in sync?</li>
+  <li>Do we self-host or buy this? Is it core to us? How variable is the load? What's our exit plan from the vendor?</li>
+  <li>Does this really need to be distributed — which reason applies? Could one node do it?</li>
+  <li>If we split into services, how do we keep data consistent across them?</li>
+  <li>What personal data do we keep, why, for how long — and can we actually delete it everywhere, including derived copies?</li>
+</ol>
+
+<p class="pager"><a href="../lessons/0001-ch1-trade-offs-in-data-systems-architecture.html">← Lesson 0001</a> <a href="ch2-cheatsheet.html">Ch.2 cheat sheet →</a></p>
+</main>
+</body>
+</html>

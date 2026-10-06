@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shell Basics — Quick Reference</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">Reference · The Missing Semester</div>
+    <h1>Shell Basics, Compressed</h1>
+    <p class="dek">The durable core of Topic 1: prompts, paths, streams, pipes, quoting, globs, and the mental model that makes them one system.</p>
+    <div class="meta">
+      <span>Print-friendly</span>
+      <span>bash</span>
+      <span>Lesson 0001</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>The model</h2>
+    <blockquote>Command = program + arguments. The shell splits the line, finds the program on <code>$PATH</code>, runs it, and its text output flows to the terminal — or through pipes into the next program.</blockquote>
+  </section>
+
+  <section>
+    <h2>Prompt &amp; navigation</h2>
+    <div class="code-card"><pre>missing:~$            # user@machine:directory — $ means not root
+pwd                   # print working directory
+cd /path/to/dir       # change directory (shell builtin!)
+cd ~  /  ..           # home / root / parent;  .  = this directory
+echo $PWD             # same as pwd
+ls -l /               # first 10 chars = type + permissions (-rw-r--r--)</pre></div>
+  </section>
+
+  <section>
+    <h2>Finding &amp; learning programs</h2>
+    <div class="code-card"><pre>echo $PATH            # ':'-separated dirs the shell searches, in order
+which date            # which file will run for 'date'
+man date              # manual page (space to page, q to quit)
+date --help           # most programs accept --help
+tldr date             # (install) quick examples</pre></div>
+  </section>
+
+  <section>
+    <h2>Streams, redirection, pipes</h2>
+    <p>Every program has <strong>stdin (0)</strong>, <strong>stdout (1)</strong>, <strong>stderr (2)</strong>.</p>
+    <div class="code-card"><pre>cmd &gt; file            # stdout → file (overwrite)
+cmd &gt;&gt; file           # stdout → file (append)
+cmd &lt; file            # stdin ← file
+cmd 2&gt; err.txt        # stderr → file
+cmd &gt; all.txt 2&gt;&amp;1    # both streams → same file
+cmd | other           # pipe: stdout of cmd → stdin of other
+cmd | tee log.txt     # show AND save; e.g. migrate | tee deploy.log
+</pre></div>
+  </section>
+
+  <section>
+    <h2>Exit status &amp; control operators</h2>
+    <div class="code-card"><pre>cmd; echo $?          # 0 = success, non-zero = failure
+cmd1 &amp;&amp; cmd2          # run cmd2 only if cmd1 succeeded
+cmd1 || cmd2          # run cmd2 only if cmd1 failed
+# CI pattern: npm test &amp;&amp; npm run build</pre></div>
+  </section>
+
+  <section>
+    <h2>Quoting</h2>
+    <div class="code-card"><pre>'literal $PATH'       # single quotes: everything literal
+"double $PATH"        # double quotes: variables expand
+My\ Photos            # escape a single special character
+$'line\nbreak'        # ANSI quotes: escape sequences (see Bash manual)</pre></div>
+  </section>
+
+  <section>
+    <h2>Globs (shell expands before the program runs)</h2>
+    <div class="code-card"><pre>ls *.txt              # any characters
+ls file?.txt          # exactly one character
+ls {a,b,c}.txt        # brace expansion: a.txt b.txt c.txt</pre></div>
+  </section>
+
+  <section>
+    <h2>Everyday text tools</h2>
+    <table>
+      <tr><td><code>cat file</code></td><td>print file</td></tr>
+      <tr><td><code>sort file</code></td><td>print sorted lines</td></tr>
+      <tr><td><code>uniq -c file</code></td><td>count consecutive duplicates</td></tr>
+      <tr><td><code>head / tail file</code></td><td>first / last lines</td></tr>
+      <tr><td><code>grep pattern file</code></td><td>matching lines (pattern = regex)</td></tr>
+      <tr><td><code>sed -i 's/a/b/g' file</code></td><td>replace all occurrences in place</td></tr>
+      <tr><td><code>find . -name "*.py"</code></td><td>find files by name/type/size</td></tr>
+      <tr><td><code>awk '{print $2}' file</code></td><td>print a column of every line</td></tr>
+    </table>
+    <p class="caption">Composition example: find the 5 most common extensions in your home directory — <code>find ~ -type f | sed 's/.*\.//' | sort | uniq -c | sort -rn | head -5</code>.</p>
+  </section>
+
+  <section>
+    <h2>Scripting starters</h2>
+    <div class="code-card"><pre>#!/bin/bash           # shebang: runs the file with bash
+set -euo pipefail     # strict mode: fail on error/undefined var/broken pipe
+for i in $(seq 1 10); do echo "$i"; done
+if [ -f "$1" ]; then echo "exists"; else echo "missing"; fi
+./script.sh           # needs executable bit: chmod +x script.sh</pre></div>
+  </section>
+
+  <section>
+    <h2>Pitfalls</h2>
+    <ul>
+      <li><code>cd</code> <em>must</em> be a builtin: a child process cannot change its parent's directory.</li>
+      <li>Quote variables (<code>"$1"</code>) — filenames with spaces will break unquoted scripts.</li>
+      <li>Check scripts with <code>shellcheck</code> before trusting them.</li>
+      <li>bash has many gotchas; >100-line "scripts" are usually better rewritten in Python.</li>
+    </ul>
+  </section>
+
+  <section class="primary-source">
+    <h2>Primary sources</h2>
+    <ul>
+      <li><a href="https://missing.csail.mit.edu/2026/course-shell/">MIT Missing Semester — Topic 1 notes</a></li>
+      <li><a href="https://www.gnu.org/software/bash/manual/bash.html">GNU Bash manual</a> — Quoting, Redirections, Pipelines, Pattern Matching, The Set Builtin, Special Parameters</li>
+      <li><a href="https://git-scm.com/book/en/v2">Pro Git</a> (later lessons)</li>
+    </ul>
+  </section>
+
+  <footer>
+    <a href="../lessons/0001-introduction-to-the-shell.html">← Lesson 0001</a> · The Missing Semester learning workspace · CC BY-NC-SA
+  </footer>
+
+</div>
+</body>
+</html>

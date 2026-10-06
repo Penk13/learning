@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A short interactive lesson on tracing an ASP.NET Core request through middleware.">
+  <title>Lesson 1 — Trace an ASP.NET Core Request</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+  <script src="../assets/quiz.js" defer></script>
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">.NET Job Preparation · Lesson 1</p>
+    <h1>Trace an ASP.NET Core request</h1>
+    <p class="dek">Build the mental model that makes middleware, logging, exception handling, authentication, and API behavior easier to explain.</p>
+    <div class="meta"><span>15–20 minutes</span><span>Concept + retrieval</span><span>No SDK required</span></div>
+  </header>
+
+  <main>
+    <aside class="callout"><strong>Mission link.</strong> Your goal is not to memorize framework vocabulary. It is to explain what happens, in order, when an HTTP request reaches a .NET application—and to reason about where a cross-cutting concern belongs.</aside>
+
+    <div class="lesson-grid">
+      <article>
+        <section>
+          <p class="kicker">0:00–1:00 · Retrieve first</p>
+          <h2>What happens after a request arrives?</h2>
+          <p>Before reading further, answer aloud or in a note: <strong>“How does an ASP.NET Core application decide what code handles an HTTP request?”</strong> Do not look anything up yet. A rough answer is useful; it gives us a baseline.</p>
+          <details>
+            <summary>Now reveal the target idea</summary>
+            <p>ASP.NET Core composes an ordered pipeline of request delegates. Each middleware can perform work, call the next delegate, and then perform more work as the response returns—or stop the journey early.</p>
+          </details>
+        </section>
+
+        <section>
+          <p class="kicker">1:00–5:00 · The one idea</p>
+          <h2>A pipeline is a chain with a return trip</h2>
+          <p>Microsoft describes middleware as software assembled into an application pipeline to handle requests and responses. The important interview detail is that middleware has two opportunities: <strong>before</strong> the next component and <strong>after</strong> the next component.</p>
+          <div class="pipeline" aria-label="Request enters exception handling, then authentication, then endpoint; response returns in reverse order">
+            <div class="pipe-step"><span>1</span>Exception handling</div>
+            <div class="pipe-arrow">→</div>
+            <div class="pipe-step"><span>2</span>Authentication</div>
+            <div class="pipe-arrow">→</div>
+            <div class="pipe-step"><span>3</span>Endpoint</div>
+          </div>
+          <p>Think of the request moving forward through doors, then the response walking back through the same doors. That is why logging or timing code can wrap an endpoint.</p>
+        </section>
+
+        <section>
+          <p class="kicker">5:00–9:00 · Read the code</p>
+          <h2><code>Use</code> continues; <code>Run</code> can finish</h2>
+          <p>This is a deliberately small version of the pattern shown in the official documentation:</p>
+          <pre><code>app.Use(async (context, next) =&gt;
+{
+    Console.WriteLine("A before");
+    await next.Invoke(context);
+    Console.WriteLine("A after");
+});
+
+app.Use(async (context, next) =&gt;
+{
+    Console.WriteLine("B before");
+    await next.Invoke(context);
+    Console.WriteLine("B after");
+});
+
+app.Run(async context =&gt;
+{
+    Console.WriteLine("terminal");
+    await context.Response.WriteAsync("OK");
+});</code></pre>
+          <ul>
+            <li><code>Use</code> receives a <code>next</code> delegate and can choose whether to invoke it.</li>
+            <li>Statements before <code>next</code> run on the way in.</li>
+            <li>Statements after <code>next</code> run on the way back out.</li>
+            <li><code>Run</code> is terminal here: there is no later delegate to invoke.</li>
+          </ul>
+          <p class="code-note">The exact overloads can vary with the API shape; focus on the control flow first. The official source linked below is the authority for current syntax.</p>
+        </section>
+
+        <section>
+          <p class="kicker">9:00–12:00 · Predict</p>
+          <div class="quiz" data-quiz data-correct="b">
+            <h3>Check 1 · What is the output order?</h3>
+            <p>Two <code>Use</code> middlewares log before and after, followed by <code>Run</code>. Which sequence is correct?</p>
+            <div class="quiz-options" role="group" aria-label="Output order choices">
+              <button class="quiz-option" type="button" data-answer="a" aria-pressed="false">A before · A after · B before · B after · terminal</button>
+              <button class="quiz-option" type="button" data-answer="b" aria-pressed="false">A before · B before · terminal · B after · A after</button>
+              <button class="quiz-option" type="button" data-answer="c" aria-pressed="false">B before · A before · terminal · A after · B after</button>
+              <button class="quiz-option" type="button" data-answer="d" aria-pressed="false">B before · B after · terminal · A before · A after</button>
+            </div>
+            <p class="quiz-feedback" data-feedback hidden aria-live="polite"></p>
+            <span data-explanation hidden data-correct-text="The request enters in registration order, then the response unwinds in reverse order." data-retry-text="Follow the first middleware to next: A before, then B before. After the terminal delegate, B and then A resume."></span>
+          </div>
+        </section>
+
+        <section>
+          <p class="kicker">12:00–14:00 · Transfer</p>
+          <div class="quiz" data-quiz data-correct="b">
+            <h3>Check 2 · What does “terminal” mean?</h3>
+            <p>Choose the best interview-level description.</p>
+            <div class="quiz-options" role="group" aria-label="Terminal middleware choices">
+              <button class="quiz-option" type="button" data-answer="a" aria-pressed="false">It invokes the next middleware</button>
+              <button class="quiz-option" type="button" data-answer="b" aria-pressed="false">It ends the request pipeline</button>
+              <button class="quiz-option" type="button" data-answer="c" aria-pressed="false">It registers a service dependency</button>
+              <button class="quiz-option" type="button" data-answer="d" aria-pressed="false">It starts the application host</button>
+            </div>
+            <p class="quiz-feedback" data-feedback hidden aria-live="polite"></p>
+            <span data-explanation hidden data-correct-text="A terminal component does not pass control to a later delegate." data-retry-text="Terminal describes pipeline traversal, not service registration or application startup."></span>
+          </div>
+        </section>
+
+        <section class="practice">
+          <p class="kicker">14:00–18:00 · Interview drill</p>
+          <h2>Answer in 60 seconds</h2>
+          <p>Imagine an interviewer asks: <strong>“What is ASP.NET Core middleware, and why does its order matter?”</strong> Answer aloud before opening the self-check.</p>
+          <details>
+            <summary>Self-check rubric</summary>
+            <ul>
+              <li>Define middleware as an ordered chain of request delegates.</li>
+              <li>Say that a component can run before and after the next delegate.</li>
+              <li>Explain short-circuiting: not invoking the next delegate stops traversal.</li>
+              <li>Give one order example, such as exception handling early so it can observe later failures.</li>
+            </ul>
+          </details>
+          <p><strong>Your reply task:</strong> send me (1) the output order from Check 1 and (2) your own 60-second answer. I will assess the explanation, correct gaps, and use that evidence to choose Lesson 2.</p>
+        </section>
+
+        <section>
+          <p class="kicker">Primary source</p>
+          <p class="source"><a href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware?view=aspnetcore-10.0&amp;preserve-view=true" target="_blank" rel="noreferrer">ASP.NET Core middleware — Microsoft Learn</a>. Read the sections on the request pipeline, <code>Use</code>, <code>Run</code>, and short-circuiting. For a compact reminder, keep the <a href="../reference/aspnet-core-request-pipeline.html">request pipeline field reference</a> nearby.</p>
+        </section>
+      </article>
+
+      <aside class="sidebar">
+        <h3>Keep in mind</h3>
+        <p>This lesson is about <em>control flow</em>, not memorizing every middleware name.</p>
+        <ul>
+          <li>Ordered chain</li>
+          <li>Before / next / after</li>
+          <li>Short-circuit</li>
+          <li>Terminal delegate</li>
+        </ul>
+        <p><a href="../MISSION.md">Read the mission</a><br><a href="../RESOURCES.md">Browse sources</a></p>
+      </aside>
+    </div>
+
+    <nav class="footer-nav"><a href="../INDEX.md">← Course index</a><span>Lesson 1 of the course</span></nav>
+  </main>
+</body>
+</html>

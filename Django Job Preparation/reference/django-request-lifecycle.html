@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Django Request Lifecycle — Quick Reference</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+  <main class="lesson-shell">
+    <header class="lesson-header">
+      <div class="eyebrow">Quick reference</div>
+      <h1>Django request lifecycle</h1>
+      <p class="dek">A compact interview-ready model of how a request becomes a response.</p>
+    </header>
+
+    <section>
+      <div class="flow" aria-label="Request lifecycle from request to response">
+        <div class="flow-node">Request</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Middleware</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">URLconf</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">View</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">ORM / template</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Response</div>
+      </div>
+      <p class="caption">Middleware wraps the path and may short-circuit it. A view can return HTML, a redirect, an error response, JSON, or another valid response type.</p>
+    </section>
+
+    <section>
+      <h2>Interview answer</h2>
+      <blockquote>“Django receives the request through its middleware stack, resolves the URL against the root URLconf in order, and calls the first matching view with an <code>HttpRequest</code> plus any captured parameters. The view performs application work—possibly querying the ORM or rendering a template—and returns an <code>HttpResponse</code>. The response then travels back through response middleware before it is sent to the client. A missing match or exception is handled by Django's error handlers.”</blockquote>
+    </section>
+
+    <section>
+      <h2>Three boundaries to remember</h2>
+      <ol class="steps">
+        <li><strong>URLconf selects.</strong> A URLconf is a Python mapping from URL path expressions to view callables. Patterns are checked in order and Django stops at the first match.</li>
+        <li><strong>The view decides.</strong> A view receives the request and returns a response. It is not synonymous with a template and does not have to return HTML.</li>
+        <li><strong>The model describes data.</strong> A model is a Python class that generally maps to a database table. The ORM gives the application a database-access API, but the view remains responsible for the response decision.</li>
+      </ol>
+    </section>
+
+    <section class="callout">
+      <strong>Common correction:</strong> do not say “Django finds the template from the URL.” Django first resolves the URL to a view; the view may then choose to render a template, redirect, return JSON, or produce another response.
+    </section>
+
+    <nav class="lesson-nav" aria-label="Related material">
+      <a href="../lessons/0001-request-lifecycle.html">Study lesson 0001</a>
+      <a href="https://docs.djangoproject.com/en/stable/topics/http/urls/">Read the official URL dispatcher docs</a>
+      <a href="../MISSION.md">Return to the mission</a>
+    </nav>
+  </main>
+</body>
+</html>

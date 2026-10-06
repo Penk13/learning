@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reference — React list rendering</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+  <main class="lesson-shell">
+    <header class="lesson-header">
+      <div class="lesson-number">Quick reference · React JS job preparation</div>
+      <h1>React list rendering</h1>
+      <p class="dek">The compact mental model behind turning JavaScript data into stable, readable JSX lists.</p>
+    </header>
+
+    <section>
+      <div class="eyebrow">The pipeline</div>
+      <div class="flow" aria-label="Data to React list pipeline">
+        <div class="flow-node">Array of data</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><code>filter()</code> if needed</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><code>map()</code> to JSX</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Stable <code>key</code></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Render the array</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h3><code>map()</code></h3>
+        <p>Calls a callback for each item and returns a <strong>new array</strong> containing each callback result.</p>
+        <div class="code-card"><pre><code>const names = ["Ada", "Grace"];
+const items = names.map(name =&gt; &lt;li&gt;{name}&lt;/li&gt;);</code></pre></div>
+      </div>
+      <div class="card">
+        <h3>Destructuring</h3>
+        <p>Unpacks object properties into local bindings, including directly in a callback parameter.</p>
+        <div class="code-card"><pre><code>people.map(({ id, name }) =&gt; (
+  &lt;li key={id}&gt;{name}&lt;/li&gt;
+));</code></pre></div>
+      </div>
+      <div class="card">
+        <h3>Keys</h3>
+        <p>A key is stable identity for an item among its siblings. Prefer a persistent data ID.</p>
+        <p class="micro">Avoid array indexes when order can change; never generate keys with <code>Math.random()</code>.</p>
+      </div>
+      <div class="card">
+        <h3>Immutability</h3>
+        <p><code>map()</code>, <code>filter()</code>, <code>slice()</code>, and spread create new arrays. <code>push()</code>, <code>pop()</code>, and <code>splice()</code> mutate.</p>
+        <p class="micro">For arrays in React state, create a new array before setting the next state.</p>
+      </div>
+    </section>
+
+    <section class="callout warning">
+      <strong>Interview distinction.</strong> <code>key</code> is used by React to track list items; it is not passed to the component as a normal prop. If the component needs the ID, pass a separate prop such as <code>itemId={id}</code>.
+    </section>
+
+    <section>
+      <div class="eyebrow">Thirty-second answer</div>
+      <blockquote>“I keep the source data as an array, optionally filter it, then use <code>map()</code> to transform each record into JSX. Each mapped element gets a stable key from the data so React can match items when the collection changes. I avoid mutating arrays, especially arrays held in state, and use non-mutating methods or spread to produce the next array.”</blockquote>
+    </section>
+
+    <nav class="lesson-nav" aria-label="Reference navigation">
+      <a href="../lessons/0001-render-data-not-repetition.html">Complete lesson 0001</a>
+      <a href="../RESOURCES.md">Browse trusted resources</a>
+      <a href="../MISSION.md">Review the mission</a>
+    </nav>
+  </main>
+</body>
+</html>

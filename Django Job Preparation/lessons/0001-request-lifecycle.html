@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 0001 — Trace a Django Request</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+  <main class="lesson-shell">
+    <header class="lesson-header">
+      <div class="lesson-number">Lesson 0001 · Django job preparation</div>
+      <h1>Trace a Django request like an interviewer</h1>
+      <p class="dek">Build one durable mental model: explain how Django turns a browser request into a response, without confusing URLconf, views, templates, and models.</p>
+      <div class="meta">
+        <span>10–15 minutes</span>
+        <span>Interview-ready fundamentals</span>
+        <span>Retrieval + feedback</span>
+      </div>
+    </header>
+
+    <div class="mission-strip"><strong>Why this matters for your mission.</strong> A clear request-lifecycle explanation is a compact way to demonstrate Django fundamentals in web developer, full-stack, and backend interviews. It also gives you a map for deeper topics such as middleware, ORM performance, testing, and APIs.</div>
+
+    <section>
+      <div class="eyebrow">The mental model</div>
+      <h2>Request in; response out</h2>
+      <p>Keep this pipeline in your head before you discuss individual Django features:</p>
+      <div class="flow" aria-label="Request lifecycle from request to response">
+        <div class="flow-node">Request</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Middleware</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">URLconf</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">View</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">ORM / template</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Response</div>
+      </div>
+      <p class="caption">The ORM and template are common work performed by a view—not mandatory stops for every request.</p>
+    </section>
+
+    <section>
+      <div class="eyebrow">Say it clearly</div>
+      <h2>A strong 45-second answer</h2>
+      <blockquote>“Django receives the request through its middleware stack, resolves the URL against the root URLconf in order, and calls the first matching view with an <code>HttpRequest</code> and any captured parameters. The view performs the application work—perhaps querying the ORM or rendering a template—and returns an <code>HttpResponse</code>. The response then travels back through response middleware before Django sends it to the client. If no URL matches or an exception occurs, Django uses its error-handling path.”</blockquote>
+      <p>This answer is strong because it names responsibilities and leaves room for alternatives: a view can return a redirect, a 404, JSON, or another response—not only an HTML page.</p>
+    </section>
+
+    <section>
+      <div class="eyebrow">Concrete example</div>
+      <h2>Read the code as a pipeline</h2>
+      <div class="code-card"><pre><code># jobs/urls.py
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path("jobs/&lt;int:pk&gt;/", views.detail, name="job-detail"),
+]
+
+# jobs/views.py
+from django.shortcuts import get_object_or_404, render
+from .models import Job
+
+def detail(request, pk):
+    job = get_object_or_404(Job, pk=pk)
+    return render(request, "jobs/detail.html", {"job": job})</code></pre></div>
+      <ol class="steps">
+        <li><strong>Match:</strong> the URL pattern recognizes a path such as <code>/jobs/42/</code> and captures <code>pk=42</code>.</li>
+        <li><strong>Call:</strong> Django calls <code>views.detail(request, pk=42)</code>.</li>
+        <li><strong>Work:</strong> the view asks the ORM for the <code>Job</code>; <code>get_object_or_404</code> turns a missing object into a 404 response.</li>
+        <li><strong>Respond:</strong> <code>render</code> combines the template and context into an <code>HttpResponse</code>.</li>
+      </ol>
+    </section>
+
+    <section>
+      <div class="eyebrow">Check your understanding</div>
+      <h2>Answer before reading the explanation</h2>
+
+      <div class="quiz" data-quiz>
+        <div class="quiz-label">Question 1 of 3</div>
+        <p class="quiz-question">What does a URLconf primarily do?</p>
+        <div class="quiz-options">
+          <button type="button" data-answer="correct">Matches paths to views</button>
+          <button type="button" data-answer="wrong">Stores rows in databases</button>
+          <button type="button" data-answer="wrong">Renders templates into HTML</button>
+          <button type="button" data-answer="wrong">Runs tests during deployment</button>
+        </div>
+        <p class="quiz-status" data-quiz-status aria-live="polite">Choose one answer.</p>
+        <p class="quiz-explanation">A URLconf maps URL path expressions to view callables. Django checks patterns in order and stops at the first match.</p>
+      </div>
+
+      <div class="quiz" data-quiz>
+        <div class="quiz-label">Question 2 of 3</div>
+        <p class="quiz-question">What must a view ultimately return?</p>
+        <div class="quiz-options">
+          <button type="button" data-answer="wrong">A database model instance</button>
+          <button type="button" data-answer="correct">A valid HttpResponse object</button>
+          <button type="button" data-answer="wrong">An HTML template filename</button>
+          <button type="button" data-answer="wrong">A URL pattern collection</button>
+        </div>
+        <p class="quiz-status" data-quiz-status aria-live="polite">Choose one answer.</p>
+        <p class="quiz-explanation">A view receives a request and returns a response. That response may contain rendered HTML, but it can also be a redirect, error, JSON payload, image, or another response type.</p>
+      </div>
+
+      <div class="quiz" data-quiz>
+        <div class="quiz-label">Question 3 of 3</div>
+        <p class="quiz-question">What happens after the first URL pattern matches?</p>
+        <div class="quiz-options">
+          <button type="button" data-answer="correct">Django calls the matched view</button>
+          <button type="button" data-answer="wrong">The template renders the request</button>
+          <button type="button" data-answer="wrong">All middleware is skipped entirely</button>
+          <button type="button" data-answer="wrong">Database creates a matching table</button>
+        </div>
+        <p class="quiz-status" data-quiz-status aria-live="polite">Choose one answer.</p>
+        <p class="quiz-explanation">Once a URL pattern matches, Django imports and calls the associated view, passing the request and any captured arguments. Middleware is not automatically skipped.</p>
+      </div>
+    </section>
+
+    <section class="retrieval">
+      <div class="eyebrow">Make it stick</div>
+      <h2>Close the page and explain it</h2>
+      <p>Without looking back, write four or five sentences that answer: <em>“What happens when a user requests <code>/jobs/42/</code>?”</em> Name at least four stages and one possible alternative to rendering HTML.</p>
+      <textarea aria-label="Your explanation of the Django request lifecycle" placeholder="Write your explanation here before revealing the model answer..."></textarea>
+      <details>
+        <summary>Reveal a model answer</summary>
+        <p>Django passes the request through middleware, then checks the root URLconf in order. The matching pattern captures <code>pk=42</code> and calls the detail view with the request and that value. The view queries the ORM and may render a template, return a redirect, or produce an error response. The resulting response travels back through middleware to the client.</p>
+      </details>
+    </section>
+
+    <section class="primary-source">
+      <h2>Primary source for this lesson</h2>
+      <p>Read the official <a href="https://docs.djangoproject.com/en/stable/topics/http/urls/">Django URL dispatcher documentation</a>. Focus on the section titled <em>How Django processes a request</em>; it is the source for the routing sequence used here. The page includes a version switcher, so use the documentation matching the version in your project.</p>
+    </section>
+
+    <nav class="lesson-nav" aria-label="Lesson navigation">
+      <a href="../reference/django-request-lifecycle.html">Open the one-page reference</a>
+      <a href="../RESOURCES.md">Browse trusted resources</a>
+      <a href="../MISSION.md">Review the mission</a>
+    </nav>
+
+    <footer>Something feels vague or you want a harder example? Ask me a follow-up question. Next lesson will build on this model with Django’s project/app boundaries and the ORM.</footer>
+  </main>
+  <script src="../assets/quiz.js" defer></script>
+</body>
+</html>

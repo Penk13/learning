@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DDIA Ch.2 Cheat Sheet</title>
+<link rel="stylesheet" href="../assets/course.css">
+<style>
+  main { max-width: 900px; }
+  .grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card ul { margin: .3em 0; padding-left: 1.1em; }
+  .card li { margin: .15em 0; }
+  .formula { font-family: var(--mono); font-size: 1rem; background: var(--card-2); padding: 6px 10px; border-radius: 6px; display: inline-block; }
+</style>
+</head>
+<body>
+<main>
+<div class="kicker">DDIA 2nd ed. · Reference · Chapter 2 (pp. 33–56)</div>
+<h1>Defining Nonfunctional Requirements</h1>
+<p class="muted">One page. Print it. Terms → <a href="glossary.html">glossary</a>.</p>
+
+<div class="grid">
+  <div class="card">
+    <h4>🐦 Case study: home timelines</h4>
+    <ul>
+      <li>5.8k posts/s (spikes 150k), 200 follows/followers avg, visible in 5 s.</li>
+      <li>Polling a join: 2M polls/s × 200 = <b>400M lookups/s</b>.</li>
+      <li><b>Materialize</b> (fan-out on write): 5.8k × 200 ≈ <b>1.16M writes/s</b>; reads = cache.</li>
+      <li>Spikes → enqueue deliveries. Celebrities → store separately, merge at read. Super-followers → sample.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>⚡ Performance</h4>
+    <ul>
+      <li><b>Response time</b> (users care) vs <b>throughput</b> (cost).</li>
+      <li>Near capacity, queueing makes response time explode.</li>
+      <li>Retry storm → <b>metastable failure</b>. Fix: backoff + jitter, circuit breaker, load shedding, backpressure.</li>
+      <li>Response time = latency (network + queueing) + service time. Measure client-side.</li>
+      <li>Use <b>percentiles</b> (p50, p95, p99, p999), not mean.</li>
+      <li>Tail amplification: <span class="formula">P(slow) = 1 − (1 − p)ⁿ</span></li>
+      <li>SLO = target; SLA = contract + consequences.</li>
+      <li>Never average percentiles → add histograms (HdrHistogram, t-digest, DDSketch).</li>
+    </ul>
+  </div>
+
+  <div class="card rel">
+    <h4 class="c-rel">🛡 Reliability</h4>
+    <ul>
+      <li><b>Fault</b> (one part) ≠ <b>failure</b> (system misses SLO).</li>
+      <li>Find &amp; remove <b>SPOFs</b>. Tolerance is always for <i>certain</i> faults.</li>
+      <li>Fault injection / chaos engineering. Prevent only where no cure (security).</li>
+    </ul>
+    <table class="compare">
+      <tr><th>Type</th><th>Shape</th><th>Defence</th></tr>
+      <tr><td>Hardware</td><td>mostly independent</td><td>redundancy → tolerate loss of machines/AZs; rolling upgrades</td></tr>
+      <tr><td>Software</td><td>highly correlated</td><td>test assumptions, isolate, crash-restart, avoid retry loops, monitor</td></tr>
+      <tr><td>Human</td><td>config = top outage cause</td><td>tests, fast rollback, gradual rollout, observability, blameless postmortems</td></tr>
+    </table>
+  </div>
+
+  <div class="card sca">
+    <h4 class="c-sca">📈 Scalability</h4>
+    <ul>
+      <li>Ask "if load grows <i>this way</i>, what are our options?" — never "does it scale?"</li>
+      <li>Early product: simplicity &gt; hypothetical scale.</li>
+      <li>Describe load: throughput, peaks, read:write, hit rate, items/user.</li>
+      <li><b>Linear scalability</b> = 2× resources → 2× load.</li>
+      <li>Shared-memory (up) · shared-disk (NAS/SAN) · shared-nothing (out).</li>
+      <li>Rethink every ~10×; plan ≤ 1 order ahead. No magic scaling sauce.</li>
+      <li>Split into independent parts; don't over-complicate (5 services &lt; 50).</li>
+    </ul>
+  </div>
+
+  <div class="card mai">
+    <h4 class="c-mai">🔧 Maintainability</h4>
+    <ul>
+      <li>Most cost is <b>after</b> launch; everything becomes legacy.</li>
+      <li><b>Operability</b>: observability, no single-machine dependency, docs, defaults + overrides, self-heal + manual control, predictable. Automation is two-edged.</li>
+      <li><b>Simplicity</b>: avoid big ball of mud; essential vs accidental (Brooks) — fuzzy line; weapon = abstraction.</li>
+      <li><b>Evolvability</b>: loose coupling; <b>minimize irreversibility</b>.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Design-review questions (steal these)</h3>
+<ol>
+  <li>What are our 2–3 load numbers, with current and peak values?</li>
+  <li>What's our SLO in percentiles, measured from the client side?</li>
+  <li>How close to capacity do we run at peak? What happens when clients retry?</li>
+  <li>Which single fault would cause a user-visible failure today (SPOF)?</li>
+  <li>Which faults are <i>correlated</i> (same code/config/dependency on every node)?</li>
+  <li>How fast can we roll back a bad config? Do we roll out gradually? Are postmortems blameless?</li>
+  <li>Which upcoming change is irreversible — and can we make it reversible?</li>
+</ol>
+
+<p class="pager"><a href="../lessons/0002-ch2-defining-nonfunctional-requirements.html">← Lesson 0002</a> <a href="glossary.html">Glossary →</a></p>
+</main>
+</body>
+</html>

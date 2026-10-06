@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0002 — Environment Variables and Scripts</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Part 1</div>
+    <h1>Environment Variables and Scripts</h1>
+    <p class="dek">Every program you start is a <em>child</em> of your shell. It gets a copy of the shell's environment, runs, and hands back one number. Understand that, and <code>export</code>, <code>source</code>, <code>cd</code>, <code>&amp;&amp;</code>, and CI failures all stop being magic.</p>
+    <div class="meta">
+      <span>15–20 minutes</span>
+      <span>WSL + bash</span>
+      <span>First principles</span>
+      <span>Sandbox only</span>
+    </div>
+  </header>
+
+  <div class="mission-strip">
+    <strong>Why this lesson exists.</strong> <code>ASPNETCORE_ENVIRONMENT</code>, <code>DJANGO_SETTINGS_MODULE</code>, <code>NODE_ENV</code>, CI secrets, <code>.env</code> files — your apps are configured through environment variables. Today you learn exactly how they flow from shell to program, and you write your first reusable script.
+  </div>
+
+  <section>
+    <h2>Warm-up — two gaps from last time</h2>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Recall 1</div>
+      <p class="quiz-question">Why does <code>which cd</code> print nothing?</p>
+      <div class="quiz-options">
+        <button data-answer="wrong">cd is hidden inside the /usr/bin directory as a secret file.</button>
+        <button data-answer="wrong">which only works with programs installed through apt.</button>
+        <button data-answer="correct">cd is a shell builtin, because a child cannot change its parent's directory.</button>
+        <button data-answer="wrong">cd is an alias that bash removes after each use.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation"><code>which</code> only searches <code>$PATH</code> for files. A separate <code>cd</code> program would change <em>its own</em> directory, exit, and leave your shell where it was — so bash implements <code>cd</code> itself. <code>type cd</code> confirms it. Today's mental model is the general rule behind this.</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Recall 2</div>
+      <p class="quiz-question">What does <code>false &amp;&amp; echo yes; false || echo no</code> print?</p>
+      <div class="quiz-options">
+        <button data-answer="wrong">yes, then no on the next line</button>
+        <button data-answer="correct">only no</button>
+        <button data-answer="wrong">only yes</button>
+        <button data-answer="wrong">nothing at all</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation"><code>false</code> exits non-zero (failure). <code>&amp;&amp;</code> runs its right side only after success → skipped. <code>||</code> runs its right side only after failure → prints <code>no</code>. <code>;</code> just runs the next command regardless.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The one mental model</h2>
+    <blockquote>
+      Running a program creates a <strong>child process</strong>. The child receives its <strong>arguments</strong> and a <strong>copy</strong> of the parent's exported environment. Changes flow <strong>down</strong>, never back <strong>up</strong>. The only thing the child returns is its <strong>exit status</strong>.
+    </blockquote>
+
+    <div class="flow">
+      <div class="flow-node">your shell<br><code>export DEBUG=1</code></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">child gets a copy<br>args + env</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">child runs<br>(its changes stay private)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">returns one number<br><code>$?</code></div>
+    </div>
+
+    <p>That's why <code>cd</code> must be a builtin, why a script can't set variables in your terminal unless you <code>source</code> it, and why CI decides pass/fail by exit status alone.</p>
+  </section>
+
+  <section>
+    <h2>Knowledge you need</h2>
+
+    <h3>Shell variables vs environment variables</h3>
+    <div class="code-card"><pre>$ foo=bar                 # no spaces around =
+$ echo "$foo"             # bar
+$ bash -c 'echo $foo'     # (empty) — child didn't get it
+$ export foo              # now it's an environment variable
+$ bash -c 'echo $foo'     # bar
+$ unset foo               # remove it</pre></div>
+    <p>A plain assignment creates a <strong>shell variable</strong>, visible only to this shell. <code>export</code> marks it to be copied into every child. Convention: environment variables are <code>ALL_CAPS</code> (<code>HOME</code>, <code>PATH</code>, <code>DEBUG</code>). <code>printenv</code> lists what children will receive.</p>
+
+    <h3>Set a variable for one command only</h3>
+    <div class="code-card"><pre>$ TZ=Asia/Jakarta date    # this date runs with Jakarta time
+$ echo "$TZ"              # (empty) — your shell was never changed</pre></div>
+    <p>Prefixing <code>VAR=value</code> puts it into that one child's environment and nowhere else. This is the cleanest way to run an app in a different mode without polluting your terminal.</p>
+
+    <h3>Command substitution</h3>
+    <div class="code-card"><pre>$ today=$(date +%F)
+$ echo "backup-$today.sql"   # backup-2026-09-23.sql</pre></div>
+    <p><code>$(cmd)</code> runs <code>cmd</code> and replaces itself with the command's stdout. Always wrap expansions in double quotes (<code>"$today"</code>) so spaces don't split them into multiple arguments.</p>
+
+    <h3>Scripts: shebang, permission, <code>./</code></h3>
+    <div class="code-card"><pre>#!/usr/bin/env bash
+echo "script name: $0"
+echo "first arg:   $1"
+echo "all args:    $@"
+echo "arg count:   $#"
+exit 0</pre></div>
+    <ul>
+      <li><strong>Shebang</strong> <code>#!/usr/bin/env bash</code> — first line tells the kernel which interpreter runs the file. <code>env</code> finds <code>bash</code> via <code>$PATH</code>.</li>
+      <li><strong><code>chmod +x script.sh</code></strong> — marks the file executable. Without it: <code>Permission denied</code>.</li>
+      <li><strong><code>./script.sh</code></strong> — the current directory is <em>not</em> in <code>$PATH</code> (a safety choice, so a malicious <code>ls</code> file in some folder can't hijack you). <code>./</code> gives an explicit path.</li>
+      <li><strong><code>$1 $2 … $@ $#</code></strong> — the arguments, all of them, and how many. <code>${1:-dev}</code> means "<code>$1</code>, or <code>dev</code> if missing".</li>
+      <li><strong><code>exit N</code></strong> — the one number the script hands back. <code>0</code> = success.</li>
+    </ul>
+
+    <h3>Run vs <code>source</code></h3>
+    <div class="code-card"><pre>$ ./env.sh        # runs in a CHILD — its cd/export vanish when it exits
+$ source env.sh   # runs in THIS shell — its cd/export stick</pre></div>
+    <p><code>source</code> (or its short form <code>.</code>) reads the file into your current shell. This is how <code>~/.bashrc</code> and Python virtualenvs (<code>source .venv/bin/activate</code>) change your terminal: they <em>must</em> be sourced, because a child can't modify its parent.</p>
+
+    <h3>A safer script header</h3>
+    <div class="code-card"><pre>#!/usr/bin/env bash
+set -euo pipefail</pre></div>
+    <p>Not in the lecture, but standard practice (see <code>help set</code> / the Bash manual): <code>-e</code> stop at the first failing command, <code>-u</code> treat unset variables as errors, <code>-o pipefail</code> make a pipeline fail if <em>any</em> part fails (by default only the last command counts). Without these, a script can fail halfway and still report success.</p>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 1</div>
+      <p class="quiz-question">You run <code>APP_ENV=staging</code> (no export), then <code>python app.py</code>. What does the Python program see for <code>APP_ENV</code>?</p>
+      <div class="quiz-options">
+        <button data-answer="wrong">staging, because the shell always shares every variable.</button>
+        <button data-answer="wrong">An error, because Python cannot read shell variables.</button>
+        <button data-answer="correct">Nothing — it was a shell variable, never copied to the child.</button>
+        <button data-answer="wrong">production, the default value for every program.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">Only <em>exported</em> variables are copied into children. Fix with <code>export APP_ENV=staging</code>, or one-shot: <code>APP_ENV=staging python app.py</code>.</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 2</div>
+      <p class="quiz-question"><code>setup.sh</code> contains <code>cd /tmp</code> and <code>export DEBUG=1</code>. After <code>./setup.sh</code>, where is your shell and what is <code>$DEBUG</code>?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">Same directory as before, and DEBUG is unset.</button>
+        <button data-answer="wrong">In /tmp, and DEBUG is 1.</button>
+        <button data-answer="wrong">In /tmp, but DEBUG is unset.</button>
+        <button data-answer="wrong">Same directory, but DEBUG is 1.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation"><code>./setup.sh</code> runs in a child; its <code>cd</code> and <code>export</code> die with it. <code>source setup.sh</code> would give "in /tmp, DEBUG is 1".</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 3</div>
+      <p class="quiz-question">Without <code>set -o pipefail</code>, what is <code>$?</code> after <code>false | true</code>?</p>
+      <div class="quiz-options">
+        <button data-answer="wrong">1, because the first command failed.</button>
+        <button data-answer="correct">0, because only the last command's status counts.</button>
+        <button data-answer="wrong">2, the sum of both commands' statuses.</button>
+        <button data-answer="wrong">It is empty; pipelines do not set $?.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">By default a pipeline's status is its last command's. That hides failures like <code>python manage.py dumpdata | gzip &gt; backup.gz</code> — gzip succeeds even if the dump crashed. <code>pipefail</code> fixes it.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sandbox task — 10 minutes</h2>
+    <p>Work in <code>~/shell-sandbox</code>. Nothing here touches your work projects.</p>
+    <ol class="steps">
+      <li><strong>Down, not up.</strong> Run <code>foo=bar; bash -c 'echo "child: $foo"'</code>, then <code>export foo; bash -c 'echo "child: $foo"'</code>. Explain the difference in one sentence.</li>
+      <li><strong>One-shot variable.</strong> Run <code>TZ=Asia/Tokyo date</code>, then <code>date</code>, then <code>echo "TZ is: $TZ"</code>.</li>
+      <li><strong>Write a script.</strong> Create <code>run-app.sh</code>:
+        <div class="code-card"><pre>#!/usr/bin/env bash
+set -euo pipefail
+
+app_env="${1:-Development}"
+echo "Starting in $app_env with $# argument(s)"
+
+APP_ENV="$app_env" bash -c 'echo "child sees APP_ENV=$APP_ENV"'
+echo "parent sees APP_ENV=${APP_ENV:-<unset>}"
+
+if [ "$app_env" = "Production" ]; then
+  echo "Refusing to run Production from a sandbox" &gt;&amp;2
+  exit 1
+fi</pre></div>
+      </li>
+      <li>Try <code>./run-app.sh</code> first — read the error. Then <code>chmod +x run-app.sh</code> and run <code>./run-app.sh</code>, <code>./run-app.sh Staging</code>.</li>
+      <li><strong>Exit codes.</strong> Run <code>./run-app.sh Production; echo "exit: $?"</code>, then <code>./run-app.sh Staging &amp;&amp; echo "deploy step would run"</code> and the same with <code>Production</code>. Where did the "Refusing…" line go — stdout or stderr? Prove it with <code>./run-app.sh Production 2&gt; /dev/null</code>.</li>
+      <li><strong>Run vs source.</strong> Create <code>env.sh</code> containing <code>cd /tmp</code> and <code>export DEBUG=1</code>. Run <code>bash env.sh; pwd; echo "$DEBUG"</code>. Then <code>source env.sh; pwd; echo "$DEBUG"</code>. Then <code>cd ~/shell-sandbox; unset DEBUG</code> to clean up.</li>
+    </ol>
+    <p class="caption">Stretch (if time): run <code>false | true; echo $?</code>, then <code>set -o pipefail; false | true; echo $?</code>. Open a fresh terminal afterwards — <code>set</code> only changed that shell.</p>
+  </section>
+
+  <section>
+    <h2>Retrieval practice</h2>
+    <div class="retrieval">
+      <p><strong>Without running anything, explain in your own words:</strong> why does <code>source .venv/bin/activate</code> work, but <code>bash .venv/bin/activate</code> seems to do nothing? Use the words <em>child process</em>, <em>parent</em>, and <em>environment</em>.</p>
+      <details>
+        <summary>Model answer (after you have tried)</summary>
+        <p><code>activate</code> changes <code>PATH</code> (so <code>python</code> resolves to the venv's copy) and sets <code>VIRTUAL_ENV</code>. <code>bash activate</code> runs it in a <strong>child process</strong>: the child's <strong>environment</strong> changes, then the child exits and its changes vanish — the <strong>parent</strong> shell never sees them. <code>source</code> runs the file inside the current shell, so the changes stick. Same reason <code>cd</code> is a builtin.</p>
+      </details>
+    </div>
+  </section>
+
+  <section>
+    <h2>Connect it to your work</h2>
+    <ul>
+      <li><code>DJANGO_SETTINGS_MODULE=config.settings.test python manage.py test</code> — one-shot settings switch. Default <code>manage.py</code> uses <code>os.environ.setdefault(...)</code>, so a variable already in the environment wins over the file's default. (Your project's module name may differ.)</li>
+      <li><code>ASPNETCORE_ENVIRONMENT=Staging dotnet run</code> — picks <code>appsettings.Staging.json</code>. Caveat: <code>Properties/launchSettings.json</code> profiles can set it too; <code>dotnet run --no-launch-profile</code> ignores them. Check your project before trusting either.</li>
+      <li><code>NODE_ENV=production npm run build</code> — same pattern for React tooling.</li>
+      <li>CI pipelines are chains of child processes: a step "fails" only when some command exits non-zero. <code>set -euo pipefail</code> at the top of every deploy script makes failures actually fail.</li>
+      <li><strong>Security:</strong> secrets belong in environment variables or a secret store, never hardcoded in scripts or committed <code>.env</code> files. But children inherit everything you export — don't <code>export</code> tokens in a shell where you then run untrusted tools.</li>
+    </ul>
+  </section>
+
+  <section class="primary-source">
+    <h2>Primary source this week</h2>
+    <p>Read the <a href="https://missing.csail.mit.edu/2026/command-line-environment/">official Topic 2 notes</a>, sections <em>The Command Line Interface</em>, <em>Environment Variables</em>, and <em>Return Codes</em>. Skip Signals, Remote Machines, tmux, and Customizing — those are the next parts of Topic 2. Optional official exercise that fits today: <em>marco / polo</em> (hint: it needs <code>source</code> — now you know why).</p>
+  </section>
+
+  <section>
+    <div class="callout">
+      <strong>Ask your instructor.</strong> Paste your answers to sandbox step 1, the output of step 5, and your retrieval answer into the chat. If anything behaved differently than predicted, that's the most useful thing to bring.
+    </div>
+  </section>
+
+  <footer>
+    Lesson 0002 · The Missing Semester learning workspace · <a href="../README.md">Course map</a> · Sources: <a href="https://missing.csail.mit.edu/2026/command-line-environment/">MIT Missing Semester 2026</a>, <a href="https://www.gnu.org/software/bash/manual/bash.html">GNU Bash manual</a> · CC BY-NC-SA
+  </footer>
+
+</div>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

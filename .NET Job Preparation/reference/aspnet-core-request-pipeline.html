@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASP.NET Core Request Pipeline — Field Reference</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+  <header class="hero">
+    <p class="eyebrow">.NET Job Preparation · Reference</p>
+    <h1>ASP.NET Core request pipeline</h1>
+    <p class="dek">The compact mental model to use when explaining middleware in an interview.</p>
+  </header>
+
+  <main>
+    <section>
+      <p class="kicker">One sentence</p>
+      <p><strong>An ASP.NET Core request pipeline is an ordered sequence of request delegates.</strong> Each middleware can do work before and after the next delegate, or stop the request by not calling it.</p>
+    </section>
+
+    <section>
+      <h2>Control flow</h2>
+      <div class="pipeline" aria-label="Request enters middleware one, then middleware two, then terminal middleware; response unwinds in reverse order">
+        <div class="pipe-step"><span>1</span>Middleware A</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><span>2</span>Middleware B</div>
+        <div class="pipe-arrow">→</div>
+        <div class="pipe-step"><span>3</span>Terminal delegate</div>
+      </div>
+      <p>Forward path: A before → B before → terminal. Return path: B after → A after.</p>
+    </section>
+
+    <section>
+      <h2>Vocabulary</h2>
+      <dl>
+        <dt><strong>Middleware</strong></dt>
+        <dd>A component that handles part of a request/response journey and may invoke the next component.</dd>
+        <dt><strong>Request delegate</strong></dt>
+        <dd>The callable that handles an HTTP request at one point in the pipeline.</dd>
+        <dt><strong>Short-circuit</strong></dt>
+        <dd>Stopping pipeline traversal by not invoking the next delegate.</dd>
+        <dt><strong>Terminal middleware</strong></dt>
+        <dd>Middleware that ends traversal; <code>Run</code> creates a terminal delegate.</dd>
+      </dl>
+    </section>
+
+    <section>
+      <h2>Interview checklist</h2>
+      <ul>
+        <li>Middleware runs in registration order on the way in.</li>
+        <li>Code after <code>await next</code> runs while the response unwinds.</li>
+        <li>Order is behavior: exception handling usually belongs early so it can observe later failures.</li>
+        <li>A component that does not call the next delegate short-circuits the pipeline.</li>
+        <li>Use the words <em>ordered</em>, <em>next delegate</em>, <em>before/after</em>, and <em>short-circuit</em>.</li>
+      </ul>
+    </section>
+
+    <p class="source">Primary source: <a href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware?view=aspnetcore-10.0&amp;preserve-view=true" target="_blank" rel="noreferrer">ASP.NET Core middleware — Microsoft Learn</a>.</p>
+    <nav class="footer-nav"><a href="../lessons/0001-trace-an-aspnet-core-request.html">← Lesson 1</a><a href="../INDEX.md">Course index</a></nav>
+  </main>
+</body>
+</html>

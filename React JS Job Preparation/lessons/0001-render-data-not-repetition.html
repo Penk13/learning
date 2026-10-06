@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson 0001 — Render data, not repetition</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+  <main class="lesson-shell">
+    <header class="lesson-header">
+      <div class="lesson-number">Lesson 0001 · React JS job preparation</div>
+      <h1>Render data, not repetition</h1>
+      <p class="dek">Use everyday JavaScript—<code>map()</code>, destructuring, and stable IDs—to produce a React list you can explain in an interview.</p>
+      <div class="meta">
+        <span>10–15 minutes</span>
+        <span>JavaScript → React</span>
+        <span>Retrieval + feedback</span>
+      </div>
+    </header>
+
+    <div class="mission-strip"><strong>Why this matters for your mission.</strong> Frontend interviews often ask you to render, filter, or update collections. A strong answer connects JavaScript behavior to React behavior: transform data into JSX, preserve item identity with keys, and avoid mutating source arrays.</div>
+
+    <section>
+      <div class="eyebrow">The mental model</div>
+      <h2>One collection becomes many UI nodes</h2>
+      <p>Do not hand-write one component call per record. Keep the records as data, transform each record with JavaScript, and give React a stable identity for every sibling.</p>
+      <div class="flow" aria-label="Data to React list pipeline">
+        <div class="flow-node">Data array</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><code>filter()</code> if needed</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><code>map()</code> to JSX</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Stable <code>key</code></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Rendered list</div>
+      </div>
+      <p class="caption">This is a data transformation pipeline. React receives the resulting JSX array; it does not require a special looping syntax.</p>
+    </section>
+
+    <section>
+      <div class="eyebrow">Read the code</div>
+      <h2>Three JavaScript ideas in one component</h2>
+      <div class="code-card"><pre><code>const products = [
+  { id: "p-1", name: "Notebook", price: 8 },
+  { id: "p-2", name: "Pen", price: 2.5 },
+  { id: "p-3", name: "Desk lamp", price: 24 },
+];
+
+function ProductList({ products }) {
+  const listItems = products.map(({ id, name, price }) =&gt; (
+    &lt;li key={id}&gt;
+      &lt;span&gt;{name}&lt;/span&gt;
+      &lt;strong&gt;${price.toFixed(2)}&lt;/strong&gt;
+    &lt;/li&gt;
+  ));
+
+  return &lt;ul&gt;{listItems}&lt;/ul&gt;;
+}</code></pre></div>
+      <ol class="steps">
+        <li><strong><code>map()</code> transforms.</strong> It calls the callback once per product and returns a new array. Each callback result is one <code>&lt;li&gt;</code>.</li>
+        <li><strong>Destructuring shortens access.</strong> <code>({ id, name, price })</code> unpacks those properties from the current product object.</li>
+        <li><strong>JSX uses JavaScript values.</strong> Curly braces insert <code>name</code> and the formatted price into the markup.</li>
+        <li><strong><code>key</code> preserves identity.</strong> React uses the stable <code>id</code> to match an item when the array is sorted, inserted into, or filtered.</li>
+      </ol>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h3>Why not the array index?</h3>
+        <p>An index describes a position, not the item. When an item is inserted, removed, or moved, positions shift and React can associate the wrong existing UI with the new data.</p>
+      </div>
+      <div class="card">
+        <h3>Why not <code>Math.random()</code>?</h3>
+        <p>A random key changes on every render. React then treats every item as new, which can recreate the DOM and discard local input or component state.</p>
+      </div>
+      <div class="card">
+        <h3>What about mutation?</h3>
+        <p><code>map()</code> does not mutate the original array. That matters especially for arrays in React state, where the next state should be a new array.</p>
+      </div>
+      <div class="card">
+        <h3>One subtle arrow-function bug</h3>
+        <p><code>item =&gt; (&lt;li&gt;...&lt;/li&gt;)</code> implicitly returns. With a block body—<code>item =&gt; { ... }</code>—you must write <code>return</code>.</p>
+      </div>
+    </section>
+
+    <section>
+      <div class="eyebrow">Check your understanding</div>
+      <h2>Answer before reading the explanation</h2>
+
+      <div class="quiz" data-quiz>
+        <div class="quiz-label">Question 1 of 4</div>
+        <p class="quiz-question">What does <code>map()</code> return?</p>
+        <div class="quiz-options">
+          <button type="button" data-answer="correct">A new transformed array</button>
+          <button type="button" data-answer="wrong">The original array only</button>
+          <button type="button" data-answer="wrong">A single rendered element</button>
+          <button type="button" data-answer="wrong">A mutated source array</button>
+        </div>
+        <p class="quiz-status" data-quiz-status aria-live="polite">Choose one answer.</p>
+        <p class="quiz-explanation"><code>map()</code> creates a new array containing the callback's return value for each source item; it does not itself return one element.</p>
+      </div>
+
+      <div class="quiz" data-quiz>
+        <div class="quiz-label">Question 2 of 4</div>
+        <p class="quiz-question">What should a <code>key</code> identify?</p>
+        <div class="quiz-options">
+          <button type="button" data-answer="correct">Each item among siblings</button>
+          <button type="button" data-answer="wrong">The component's local state</button>
+          <button type="button" data-answer="wrong">The browser's current URL</button>
+          <button type="button" data-answer="wrong">The array's total length</button>
+        </div>
+        <p class="quiz-status" data-quiz-status aria-live="polite">Choose one answer.</p>
+        <p class="quiz-explanation">A key gives React stable identity for an item among its siblings. A persistent ID from the data is usually the right source.</p>
+      </div>
+
+      <div class="quiz" data-quiz>
+        <div class="quiz-label">Question 3 of 4</div>
+        <p class="quiz-question">What does object spread create?</p>
+        <div class="quiz-options">
+          <button type="button" data-answer="correct">A shallow copied object</button>
+          <button type="button" data-answer="wrong">A deeply cloned object</button>
+          <button type="button" data-answer="wrong">A frozen immutable object</button>
+          <button type="button" data-answer="wrong">A class instance automatically</button>
+        </div>
+        <p class="quiz-status" data-quiz-status aria-live="polite">Choose one answer.</p>
+        <p class="quiz-explanation">Object spread copies enumerable own properties into a new object, but nested objects still share references; it is shallow, not a deep clone or freeze.</p>
+      </div>
+
+      <div class="quiz" data-quiz>
+        <div class="quiz-label">Question 4 of 4</div>
+        <p class="quiz-question">What does destructuring do?</p>
+        <div class="quiz-options">
+          <button type="button" data-answer="correct">Unpacks values into bindings</button>
+          <button type="button" data-answer="wrong">Mutates every source value</button>
+          <button type="button" data-answer="wrong">Renders markup into HTML</button>
+          <button type="button" data-answer="wrong">Fetches data from servers</button>
+        </div>
+        <p class="quiz-status" data-quiz-status aria-live="polite">Choose one answer.</p>
+        <p class="quiz-explanation">Destructuring unpacks array elements or object properties into distinct variables or function parameters. It does not change the source object by itself.</p>
+      </div>
+    </section>
+
+    <section class="retrieval">
+      <div class="eyebrow">Make it stick</div>
+      <h2>Give the interview answer from memory</h2>
+      <p>Without looking back, write three or four sentences answering: <em>“How would you render a list of products in React, and how would you choose the key?”</em> Mention <code>map()</code>, one JavaScript concept, and one key pitfall.</p>
+      <textarea aria-label="Your explanation of React list rendering" placeholder="Write your answer here before revealing the model answer..."></textarea>
+      <details>
+        <summary>Reveal a model answer</summary>
+        <p>“I keep products in an array and use <code>map()</code> to transform each product into an <code>&lt;li&gt;</code>, using destructuring or property access to read its fields. I give each list element a stable key from the product’s persistent ID, not the array index or a random value, because React uses the key to match items when the collection changes. If the list is in state, I use non-mutating methods or spread to create the next array.”</p>
+      </details>
+    </section>
+
+    <section class="retrieval">
+      <div class="eyebrow">Mini debugging exercise</div>
+      <h2>Find the two bugs</h2>
+      <div class="code-card"><pre><code>const listItems = products.map(product =&gt; {
+  &lt;li key={Math.random()}&gt;{product.name}&lt;/li&gt;;
+});</code></pre></div>
+      <p>What are the two problems? Write your answer before opening the explanation.</p>
+      <details>
+        <summary>Reveal the explanation</summary>
+        <p>The arrow function has a block body but no <code>return</code>, so every callback returns <code>undefined</code>. The random key also changes on every render; use a stable key from the product data, such as <code>key={product.id}</code>.</p>
+      </details>
+    </section>
+
+    <section class="primary-source">
+      <h2>Primary sources for this lesson</h2>
+      <p>Read the official React guide <a href="https://react.dev/learn/rendering-lists">Rendering Lists</a>. Focus on how React combines JavaScript <code>filter()</code>/<code>map()</code> with stable keys, and why index or random keys cause problems. For the JavaScript details, use MDN’s references for <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/map"><code>Array.prototype.map()</code></a>, <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment">destructuring</a>, and <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax">spread syntax</a>.</p>
+    </section>
+
+    <nav class="lesson-nav" aria-label="Lesson navigation">
+      <a href="../reference/react-list-rendering.html">Open the one-page reference</a>
+      <a href="../RESOURCES.md">Browse trusted resources</a>
+      <a href="../MISSION.md">Review the mission</a>
+    </nav>
+
+    <footer>Something feels vague, or you want a harder version of the exercise? Ask me a follow-up question. The next lesson can build on this with immutable state updates and event-driven list changes.</footer>
+  </main>
+  <script src="../assets/quiz.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DDIA Glossary</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+<div class="kicker">DDIA 2nd ed. · Reference</div>
+<h1>Glossary</h1>
+<p class="muted">One meaning per term, used consistently in every lesson. Grows each chapter. <span class="src">[Ch.n]</span> = where it's introduced (2nd edition numbering).</p>
+
+<h2>Chapter 1 · Trade-offs in data systems architecture</h2>
+<dl class="glossary">
+  <dt>Data-intensive application</dt>
+  <dd>App where data management (volume, change, consistency under failure/concurrency, availability) is a primary challenge — vs compute-intensive. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Frontend / backend</dt>
+  <dd>Frontend: client-side code (browser, mobile app), one user's data. Backend: server-side code handling requests for all users. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Data infrastructure</dt>
+  <dd>The databases, caches, message queues etc. a backend reads and writes. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Stateless</dt>
+  <dd>Forgets everything about a request once handled; anything persistent lives on the client or in data infrastructure. Easy to scale out. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Operational system / OLTP</dt>
+  <dd>Backend services where data is created; point queries and single-record writes, driven by users. Online transaction processing. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Analytical system / OLAP</dt>
+  <dd>Read-only copy of operational data optimized for aggregate queries by analysts and data scientists. Online analytical processing. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Point query</dt>
+  <dd>Look up a small number of records by key. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Business intelligence (BI)</dt>
+  <dd>Reports on an organization's activity to support management decisions. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Data engineer / analytics engineer</dt>
+  <dd>Data engineer: integrates operational and analytical systems, owns data infrastructure. Analytics engineer: models and transforms data for analysts. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Product / real-time analytics</dt>
+  <dd>Analytical (aggregate) queries embedded in user-facing products; real-time ingest, low latency (e.g. Pinot, Druid, ClickHouse). <span class="src">[Ch.1]</span></dd>
+
+  <dt>Data warehouse</dt>
+  <dd>Separate database with a read-only, analysis-friendly copy of data from many OLTP systems. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Data silo</dt>
+  <dd>Data spread across separate systems, hard to combine in one query. <span class="src">[Ch.1]</span></dd>
+
+  <dt>ETL / ELT</dt>
+  <dd>Extract–transform–load: pull from sources, reshape and clean, load into the warehouse. ELT transforms after loading. <span class="src">[Ch.1]</span></dd>
+
+  <dt>HTAP</dt>
+  <dd>Hybrid transactional/analytical processing: OLTP and analytics in one system. Doesn't replace a warehouse. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Data lake</dt>
+  <dd>Central repository of files in any format, no imposed schema; often on object storage. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Sushi principle</dt>
+  <dd>"Raw data is better": keep data unprocessed so each consumer can transform it their own way. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Data pipeline</dt>
+  <dd>Generalized ETL: processes moving and transforming data between systems. <span class="src">[Ch.1, detail Ch.11]</span></dd>
+
+  <dt>Reverse ETL</dt>
+  <dd>Making outputs of analytical systems (e.g. an ML model) available to operational systems. <span class="src">[Ch.1]</span></dd>
+
+  <dt>System of record / source of truth</dt>
+  <dd>Holds the authoritative version of data; written first; each fact once (normalized). Wins any disagreement. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Derived data</dt>
+  <dd>Data produced by transforming other data (cache, index, materialized view, warehouse copy, ML model). Redundant; can be rebuilt from the source. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Self-hosting / on premises</dt>
+  <dd>Running software yourself — on your own hardware (even in a rented rack) or on cloud VMs. <span class="src">[Ch.1]</span></dd>
+
+  <dt>IaaS</dt>
+  <dd>Infrastructure as a service: renting VMs (instances) with CPU, memory, disk, network; you administer the software. <span class="src">[Ch.1]</span></dd>
+
+  <dt>SaaS</dt>
+  <dd>Software as a service: vendor builds and operates it; you use a web UI or API. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Vendor lock-in</dt>
+  <dd>High cost of switching providers, typically because there's no standard compatible API. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Cloud native</dt>
+  <dd>Architecture designed to take advantage of cloud services, built on lower-level cloud services (e.g. object storage). <span class="src">[Ch.1]</span></dd>
+
+  <dt>Object storage</dt>
+  <dd>Cloud service storing large files (S3, Azure Blob, R2) across many machines; simpler API than a filesystem; no disk-space worries. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Separation of storage and compute (disaggregation)</dt>
+  <dd>Durable data lives in a storage service; compute nodes treat local disk as cache. Scale each independently; costs network transfer. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Multitenancy</dt>
+  <dd>Many customers' data and computation on the same shared hardware/service. Needs performance and security isolation. <span class="src">[Ch.1]</span></dd>
+
+  <dt>DevOps / SRE</dt>
+  <dd>Shared responsibility for development and operations; SRE is Google's implementation. Emphasis on automation, ephemeral infrastructure, frequent updates, learning from incidents. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Distributed system / node</dt>
+  <dd>Several machines communicating over a network; each participating process is a node. <span class="src">[Ch.1, detail Ch.9]</span></dd>
+
+  <dt>Elasticity</dt>
+  <dd>Automatically scaling resources up or down with demand, paying only for what you use. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Data residency</dt>
+  <dd>Laws requiring data about people in a jurisdiction to be stored/processed in that country. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Observability / tracing</dt>
+  <dd>Collecting execution data so both high-level metrics and individual events can be queried. Tracing (OpenTelemetry, Zipkin, Jaeger) tracks which service called which, and how long it took. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Microservices (SOA)</dt>
+  <dd>Application split into services with one purpose, an API and one owning team, each with its own database. Solves a people problem. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Serverless / FaaS</dt>
+  <dd>Cloud allocates resources per request; billed only for execution time. Limits: execution time, runtimes, cold starts. <span class="src">[Ch.1]</span></dd>
+
+  <dt>HPC (supercomputing)</dt>
+  <dd>Large batch scientific computation; checkpoint and restart on failure; trusted users. Contrast: cloud services must stay continuously available. <span class="src">[Ch.1]</span></dd>
+
+  <dt>Right to be forgotten</dt>
+  <dd>GDPR right to have personal data erased on request — hard with immutable logs and derived data. <span class="src">[Ch.1, detail Ch.14]</span></dd>
+
+  <dt>Data minimization (Datensparsamkeit)</dt>
+  <dd>Collect and keep only data needed for a specified purpose, no longer than necessary. <span class="src">[Ch.1]</span></dd>
+</dl>
+
+<h2>Chapter 2 · Defining nonfunctional requirements</h2>
+<dl class="glossary">
+  <dt>Functional / nonfunctional requirement</dt>
+  <dd>Functional: what the app does. Nonfunctional: how well — fast, reliable, scalable, maintainable, secure, compliant. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Polling</dt>
+  <dd>Client repeatedly re-sends a query to check for changes. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Fan-out</dt>
+  <dd>Factor by which one request multiplies into downstream requests (e.g. one post → one write per follower). <span class="src">[Ch.2]</span></dd>
+
+  <dt>Materialization / materialized view</dt>
+  <dd>Precomputing a query's result and keeping it updated (e.g. the home-timeline cache). Faster reads, more work on writes. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Response time</dt>
+  <dd>Elapsed time from request to answer, as the client sees it; includes all delays. What users care about. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Throughput</dt>
+  <dd>Requests or data volume processed per second. Determines required resources and cost. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Service time</dt>
+  <dd>Time the service is actively processing the request. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Queueing delay</dt>
+  <dd>Time spent waiting (for a CPU, for an output buffer…). Not part of service time; rises sharply near capacity. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Latency / network latency</dt>
+  <dd>Catch-all for time a request is <i>latent</i> — not being processed. Network latency = time travelling through the network. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Jitter</dt>
+  <dd>Variation in network delay. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Head-of-line blocking</dt>
+  <dd>A few slow requests hold up the fast ones queued behind them. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Retry storm / metastable failure</dt>
+  <dd>Overload → timeouts → client retries → more load; system can stay overloaded even after load drops. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Exponential backoff · circuit breaker · token bucket</dt>
+  <dd>Client-side overload protection: increasing randomized waits between retries; temporarily stop calling a failing service; rate-limit retries. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Load shedding · backpressure</dt>
+  <dd>Server-side protection: proactively reject requests near overload; tell clients to slow down. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Percentile (p50, p95, p99, p999)</dt>
+  <dd>Sort response times; pX = threshold X% of requests are faster than. p50 = median. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Tail latency</dt>
+  <dd>High-percentile response times — the slowest experiences. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Tail latency amplification</dt>
+  <dd>When a request needs many backend calls, the chance at least one is slow grows: 1 − (1 − p)ⁿ. <span class="src">[Ch.2]</span></dd>
+
+  <dt>SLO / SLA</dt>
+  <dd>Service level objective: target for performance/availability, often in percentiles. Service level agreement: contract saying what happens if the SLO is missed. <span class="src">[Ch.2]</span></dd>
+
+  <dt><span class="c-rel">Reliability</span></dt>
+  <dd>Continuing to work correctly — expected function, tolerates user mistakes, good-enough performance, prevents abuse — even when things go wrong. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Fault</dt>
+  <dd>A particular part of a system stops working correctly (a disk, a machine, a dependency). <span class="src">[Ch.2]</span></dd>
+
+  <dt>Failure</dt>
+  <dd>The system as a whole stops providing the required service — doesn't meet its SLO. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Fault-tolerant</dt>
+  <dd>Keeps serving users despite <i>certain</i> faults — always limited in number and type. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Single point of failure (SPOF)</dt>
+  <dd>A part whose fault escalates into failure of the whole system. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Fault injection / chaos engineering</dt>
+  <dd>Deliberately triggering faults (e.g. killing processes) so fault-tolerance machinery stays tested. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Availability zone</dt>
+  <dd>Cloud label for physically co-located resources, which are more likely to fail together. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Rolling upgrade</dt>
+  <dd>Restarting/patching one node at a time so the service never goes down. <span class="src">[Ch.2, detail Ch.5]</span></dd>
+
+  <dt>Correlated (systematic) fault</dt>
+  <dd>Fault that hits many nodes at once because they share code, config or a dependency. Typical of software. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Cascading failure</dt>
+  <dd>A problem in one component overloads another, which brings down another… <span class="src">[Ch.2]</span></dd>
+
+  <dt>Blameless postmortem</dt>
+  <dd>Incident review where people share full details without fear of punishment, so the organization learns. <span class="src">[Ch.2]</span></dd>
+
+  <dt><span class="c-sca">Scalability</span></dt>
+  <dd>A system's ability to cope with increased load — having options for specific growth. Not a yes/no label. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Linear scalability</dt>
+  <dd>Doubling resources lets you handle double the load at the same performance. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Vertical scaling / shared-memory</dt>
+  <dd>Moving to a bigger machine; threads share RAM. Cost grows faster than linearly. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Shared-disk</dt>
+  <dd>Several machines with own CPU/RAM sharing a disk array over a fast network (NAS/SAN). Limited by locking and contention. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Horizontal scaling / shared-nothing</dt>
+  <dd>Many nodes each with own CPU, RAM, disks; coordination in software over a normal network. Can scale linearly; needs sharding. <span class="src">[Ch.2, detail Ch.7]</span></dd>
+
+  <dt>Autoscaling</dt>
+  <dd>Automatically adding/removing resources in response to demand. Manual scaling may have fewer surprises if load is predictable. <span class="src">[Ch.2]</span></dd>
+
+  <dt><span class="c-mai">Maintainability</span></dt>
+  <dd>Ease of keeping a system running and changing it over the long term = operability + simplicity + evolvability. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Legacy system</dt>
+  <dd>Long-lived system with outdated tech and lost institutional knowledge. Every valuable system becomes one. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Operability</dt>
+  <dd>Easy for the organization to keep the system running: observability, no single-machine dependency, clear operational model, good defaults, predictable behaviour. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Simplicity</dt>
+  <dd>Easy for new engineers to understand: well-understood consistent patterns, no unnecessary complexity. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Big ball of mud</dt>
+  <dd>A software project mired in complexity. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Essential vs accidental complexity</dt>
+  <dd>Essential: inherent in the problem domain. Accidental: from limitations of our tooling. The boundary shifts as tools evolve. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Abstraction</dt>
+  <dd>Clean façade hiding implementation detail (e.g. SQL hides storage, concurrency, crash recovery). Main tool for managing complexity. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Evolvability</dt>
+  <dd>Ease of changing a whole data system for new requirements — agility at system level. <span class="src">[Ch.2]</span></dd>
+
+  <dt>Irreversibility</dt>
+  <dd>A change you can't undo (e.g. a migration with no way back). Major obstacle to evolvability; minimize it. <span class="src">[Ch.2]</span></dd>
+</dl>
+
+<p class="pager"><a href="../lessons/0001-ch1-trade-offs-in-data-systems-architecture.html">← Lesson 0001</a> <a href="../lessons/0002-ch2-defining-nonfunctional-requirements.html">Lesson 0002 →</a></p>
+</main>
+</body>
+</html>

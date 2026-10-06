@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0001 — Introduction to the Shell</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 1</div>
+    <h1>Introduction to the Shell</h1>
+    <p class="dek">Every command your IDE hides from you is a program. The shell is a programming language <em>and</em> a plumbing system: type a command, and its text output flows to your terminal — or straight into the next program.</p>
+    <div class="meta">
+      <span>15–20 minutes</span>
+      <span>WSL + bash</span>
+      <span>First principles</span>
+      <span>Sandbox only</span>
+    </div>
+  </header>
+
+  <div class="mission-strip">
+    <strong>Why this lesson exists.</strong> In your .NET/React and Django work you run <code>dotnet run</code>, <code>npm test</code>, and <code>python manage.py migrate</code> hundreds of times. Today you learn what is actually happening under each of those commands — and how to combine programs instead of reaching for copy-pasted incantations.
+  </div>
+
+  <section>
+    <h2>The one mental model</h2>
+    <blockquote>
+      A command is a <strong>program plus arguments</strong>. The shell splits your line into words, finds the program, runs it with your arguments, and its standard output flows to the terminal — or, with a pipe, into the next program.
+    </blockquote>
+
+    <div class="flow">
+      <div class="flow-node">you type<br><code>echo hello</code></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">shell splits it<br>into words</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">shell finds<br>the program</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">program runs &amp;<br>prints text</div>
+    </div>
+
+    <p>The <strong>terminal</strong> is just the window you type into. The <strong>shell</strong> (on WSL/Linux: <code>bash</code>) is the program inside that window which interprets your commands. Verify yours: <code>echo $SHELL</code> should print something like <code>/bin/bash</code>. Nearly every conclusion in this lesson comes from the <a href="https://www.gnu.org/software/bash/manual/bash.html">GNU Bash manual</a> or the <code>man</code> pages on your own machine — the best help is installed locally.</p>
+  </section>
+
+  <section>
+    <h2>Knowledge you need</h2>
+
+    <h3>Reading the prompt</h3>
+    <div class="code-card"><pre>missing:~$ date
+Fri 10 Jan 2020 11:49:31 AM EST
+missing:~$ echo hello
+hello</pre></div>
+    <p>The prompt <code>missing:~$</code> shows the machine and your <strong>current working directory</strong> (<code>~</code> = your home). The <code>$</code> means you are a normal user, not root. The shell parses your line by splitting it on whitespace: the first word is the program, the rest are arguments. An argument containing spaces must be quoted (<code>"My Photos"</code>) or escaped (<code>My\ Photos</code>).</p>
+
+    <h3>How the shell finds programs</h3>
+    <div class="code-card"><pre>$ echo $PATH
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+$ which echo
+/bin/echo</pre></div>
+    <p><code>$PATH</code> is a <code>:</code>-separated list of directories. The shell looks there for a program named <code>echo</code>; <code>which echo</code> tells you which file it found. That is why <code>dotnet</code>, <code>npm</code>, and <code>python</code> work from anywhere — they are files in <code>$PATH</code> directories.</p>
+
+    <h3>Help is local</h3>
+    <p><code>man date</code> opens the manual for any command; most programs also accept <code>--help</code>. The course suggests <code>tldr</code> for quick examples and notes that LLMs are also good at explaining command usage.</p>
+
+    <h3>Streams, redirection, and pipes</h3>
+    <p>Every program has three standard streams: <strong>stdin</strong> (input, 0), <strong>stdout</strong> (normal output, 1), and <strong>stderr</strong> (errors, 2). By default all flow to your terminal. You can redirect them:</p>
+    <div class="code-card"><pre>$ date &gt; now.txt          # overwrite a file with stdout
+$ date &gt;&gt; log.txt         # append instead
+$ grep hi &lt; notes.md     # read stdin from a file
+$ ls /nonexistent 2&gt; err.txt   # send errors to a file</pre></div>
+    <p>And a pipe <code>|</code> connects two programs: stdout of the left becomes stdin of the right.</p>
+    <div class="code-card"><pre>$ grep TODO notes.md | wc -l
+2</pre></div>
+    <p>This counts how many lines of <code>notes.md</code> contain <code>TODO</code>. Two programs, one composed task — that composition is the whole point of the shell.</p>
+
+    <h3>Exit status and control operators</h3>
+    <p>Every program exits with a status: <code>0</code> means success, anything else means failure. <code>$?</code> holds the last command's status.</p>
+    <div class="code-card"><pre>$ date; echo $?      # 0 — it worked
+$ true  &amp;&amp; echo yes   # yes  (&& runs only after success)
+$ false || echo no    # no   (|| runs only after failure)</pre></div>
+
+    <h3>Two commands worth knowing today</h3>
+    <p><code>ls -l</code> prints one line per file; the first 10 characters are the file type and permissions (e.g. <code>-rw-r--r--</code> = regular file, owner can read/write, everyone else reads). <code>man ls</code> decodes the rest. <code>cd</code> is a shell <em>builtin</em>, not a program — the next lesson (or the official exercises) explains why. <code>which cd</code> prints nothing for this reason.</p>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 1</div>
+      <p class="quiz-question">What does the shell actually do when you type <code>echo hello</code>?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">It runs the echo program with hello as an argument.</button>
+        <button data-answer="wrong">It searches the web for the phrase echo hello.</button>
+        <button data-answer="wrong">It prints the word hello from its own memory.</button>
+        <button data-answer="wrong">It asks the window manager to open a text file.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">The first word names a program the shell finds via <code>$PATH</code>; the remaining words are passed to that program as arguments. <code>echo</code> then happens to print them.</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 2</div>
+      <p class="quiz-question">How does the shell find the program for a command like <code>date</code>?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">It searches every directory in the $PATH list in order.</button>
+        <button data-answer="wrong">It keeps a fixed list of twenty built-in program names.</button>
+        <button data-answer="wrong">It asks the operating system to search the internet.</button>
+        <button data-answer="wrong">It only runs programs inside the home directory.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation"><code>$PATH</code> is a <code>:</code>-separated list of directories. The shell tries each in order until it finds an executable file with that name; <code>which date</code> shows the winner.</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 3</div>
+      <p class="quiz-question">What does the pipe in <code>grep TODO notes.md | wc -l</code> do?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">It sends grep's output into wc as its standard input.</button>
+        <button data-answer="wrong">It runs grep and wc at the same time on the file.</button>
+        <button data-answer="wrong">It saves grep's output into a new file named wc.</button>
+        <button data-answer="wrong">It makes wc's output flow backwards into grep.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">A pipe connects stdout of the left program to stdin of the right one. <code>grep</code> finds matching lines; <code>wc -l</code> counts the lines it receives.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sandbox task — 10 minutes</h2>
+    <p>Work in a disposable directory. Nothing here touches your work projects.</p>
+    <ol class="steps">
+      <li><code>mkdir -p ~/shell-sandbox &amp;&amp; cd ~/shell-sandbox</code></li>
+      <li>Run <code>ls -l /</code> and look at the first 10 characters of three different lines. Which ones are directories? Which are regular files? (Hint: <code>man ls</code>.)</li>
+      <li>Create test files: <code>touch notes.txt report.txt photo.jpg a.txt b.txt c.txt</code>. Then try <code>ls *.txt</code>, <code>ls file?.txt</code>, and <code>ls {a,b,c}.txt</code>. The <code>*</code>, <code>?</code>, and <code>{}</code> patterns are called <strong>globs</strong> — the shell expands them before running the program.</li>
+      <li>Contrast quoting: <code>echo '$PATH'</code> vs <code>echo "$PATH"</code>. Single quotes are literal; double quotes expand variables.</li>
+      <li>Redirect: create a file with <code>date &gt; now.txt</code>, inspect it with <code>cat now.txt</code>, then append with <code>date &gt;&gt; now.txt</code>.</li>
+      <li>Compose: create <code>notes.md</code> with two lines containing the word <code>TODO</code>, then run <code>grep TODO notes.md | wc -l</code>. You should see <code>2</code>.</li>
+    </ol>
+    <p class="caption">Stretch (if time): <code>ls /nonexistent /tmp &gt; out.txt 2&gt; err.txt</code> then inspect both files — one holds the listing, the other the error. That is stdin/stdout/stderr in action.</p>
+  </section>
+
+  <section>
+    <h2>Retrieval practice</h2>
+    <div class="retrieval">
+      <p><strong>Without running anything, write your prediction:</strong> what exactly will <code>grep TODO notes.md | wc -l</code> print when <code>notes.md</code> contains exactly two lines that each include <code>TODO</code>? For each word in the command, say what it does. Then run it in your sandbox and compare your prediction.</p>
+      <details>
+        <summary>Model answer (after you have tried)</summary>
+        <p><code>grep</code> reads <code>notes.md</code>, keeps only lines containing <code>TODO</code>, and writes those two lines to its stdout. The pipe feeds them into <code>wc</code>'s stdin; <code>wc -l</code> counts lines and prints <code>2</code>. So the command prints the single number <code>2</code>. The pipeline is one composed program: <em>find</em> then <em>count</em>.</p>
+      </details>
+    </div>
+  </section>
+
+  <section>
+    <h2>Connect it to your work</h2>
+    <ul>
+      <li><code>python manage.py migrate | tee deploy.log</code> — <code>tee</code> shows output on screen <em>and</em> saves it to a file: a one-word upgrade for any deployment command you run manually.</li>
+      <li><code>npm test &amp;&amp; npm run build</code> in your React work is exactly the <code>&amp;&amp;</code> control operator: build only runs if tests succeeded.</li>
+      <li>When <code>dotnet run</code> fails, the error you see is stderr — and <code>echo $?</code> right after (or <code>dotnet run; echo $?</code>) tells your script whether it failed, which is how CI systems decide to fail a build.</li>
+      <li>Interview framing: "the shell is a programming language where each command is a program and pipes compose them" is the sentence that separates rote users from people who understand the model.</li>
+    </ul>
+  </section>
+
+  <section class="primary-source">
+    <h2>Primary source this week</h2>
+    <p>Read the <a href="https://missing.csail.mit.edu/2026/course-shell/">official lecture notes for Topic 1</a> (you just covered most of it) and, if you can, watch <a href="https://www.youtube.com/playlist?list=PLyzOVJj3bHQunmnnTXrNbZnBaCA-ieK4L">the 2026 lecture video</a> — the first ~10 minutes are enough this week. The official <a href="https://missing.csail.mit.edu/2026/course-shell/#exercises">exercises</a> are open-ended and have no published solutions; the adventure is the point. The compressed version of this lesson lives in the <a href="../reference/shell-basics.html">Shell basics quick reference</a>.</p>
+  </section>
+
+  <section>
+    <div class="callout">
+      <strong>Ask your instructor.</strong> This lesson was built to be questioned. If any step, quiz, or command behaves differently than you expected, paste the command and its output into the chat — the agent teaching you will explain it before the next lesson.
+    </div>
+  </section>
+
+  <footer>
+    Lesson 0001 · The Missing Semester learning workspace · <a href="../README.md">Course map</a> · Sources: <a href="https://missing.csail.mit.edu/2026/course-shell/">MIT Missing Semester 2026</a>, <a href="https://www.gnu.org/software/bash/manual/bash.html">GNU Bash manual</a> · CC BY-NC-SA
+  </footer>
+
+</div>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

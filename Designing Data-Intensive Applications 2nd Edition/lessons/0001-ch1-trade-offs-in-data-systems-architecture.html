@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DDIA Ch.1 · Architecture Trade-offs</title>
+<link rel="stylesheet" href="../assets/course.css">
+<script src="../assets/widgets.js" defer></script>
+</head>
+<body>
+<main>
+
+<div class="kicker">DDIA 2nd ed. · Part I · Chapter 1 · Lesson 0001</div>
+<h1>Trade-Offs in Data Systems Architecture</h1>
+<p class="lede">"There are no solutions; there are only trade-offs." Four big choices that shape every data system — and the vocabulary the rest of the book is built on.</p>
+<div class="meta">
+  <span>⏱ ~25 min</span>
+  <span>📖 Book pp. 1–25 (2nd ed.)</span>
+  <span>🧰 <a href="../reference/glossary.html">Glossary</a> · <a href="../reference/ch1-cheatsheet.html">Ch.1 cheat sheet</a></span>
+</div>
+
+<div class="toc no-print">
+  <b>Your one win for today:</b> given any system at work, you can say whether it's <i>operational or analytical</i>, which store is the <i>system of record</i>, and argue <i>cloud vs self-hosted</i> and <i>single-node vs distributed</i> with real reasons.
+  <ol>
+    <li><a href="#system">Your app is a data system</a></li>
+    <li><a href="#oltp">Operational vs analytical</a></li>
+    <li><a href="#warehouse">Warehouses, lakes &amp; pipelines</a></li>
+    <li><a href="#sor">Systems of record vs derived data</a></li>
+    <li><a href="#cloud">Cloud vs self-hosting</a></li>
+    <li><a href="#dist">Distributed vs single-node</a></li>
+    <li><a href="#law">Data, law &amp; society</a></li>
+    <li><a href="#practice">Practice (no peeking)</a></li>
+  </ol>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="system">1 · Your app is already a data system</h2>
+
+<p>An app is <b>data-intensive</b> when data management is a primary challenge: big volumes, data that keeps changing, staying consistent through failures and concurrency, staying available. (Compute-intensive = the hard part is parallelizing a huge calculation.) Nobody builds from scratch — we glue standard building blocks together with application code.</p>
+
+<figure>
+<svg viewBox="0 0 640 320" role="img" aria-label="Client calls a backend; the backend glues together a database, cache, search index, stream processor and batch processor">
+  <rect x="150" y="10" width="480" height="300" rx="16" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="7 6"/>
+  <text x="615" y="32" text-anchor="end" font-size="13" font-weight="700" fill="var(--accent)">backend + data infrastructure</text>
+  <text x="615" y="49" text-anchor="end" font-size="11" class="muted-t">(clients only see the API)</text>
+
+  <rect x="10" y="135" width="100" height="50" rx="10" class="box"/>
+  <text x="60" y="158" text-anchor="middle" font-size="14">👤 Frontend</text>
+  <text x="60" y="175" text-anchor="middle" font-size="10" class="muted-t">browser / mobile</text>
+  <path d="M110 160 H170" class="line" marker-end="url(#ar)"/>
+  <text x="140" y="150" text-anchor="middle" font-size="10" class="muted-t">HTTP</text>
+
+  <rect x="172" y="120" width="130" height="80" rx="10" fill="var(--accent)"/>
+  <text x="237" y="150" text-anchor="middle" font-size="14" font-weight="700" class="white">Application</text>
+  <text x="237" y="168" text-anchor="middle" font-size="12" class="white">code (the glue)</text>
+  <text x="237" y="186" text-anchor="middle" font-size="10" class="white">usually stateless</text>
+
+  <path d="M302 140 L380 80" class="line" marker-end="url(#ar)"/>
+  <path d="M302 160 H380" class="line" marker-end="url(#ar)"/>
+  <path d="M302 180 L380 240" class="line" marker-end="url(#ar)"/>
+
+  <rect x="382" y="58" width="140" height="44" rx="10" class="box"/>
+  <text x="452" y="77" text-anchor="middle" font-size="13" font-weight="700">⚡ Cache</text>
+  <text x="452" y="93" text-anchor="middle" font-size="10" class="muted-t">remember expensive results</text>
+
+  <rect x="382" y="138" width="140" height="44" rx="10" class="box"/>
+  <text x="452" y="157" text-anchor="middle" font-size="13" font-weight="700">🗄 Database</text>
+  <text x="452" y="173" text-anchor="middle" font-size="10" class="muted-t">store &amp; find again</text>
+
+  <rect x="382" y="218" width="140" height="44" rx="10" class="box"/>
+  <text x="452" y="237" text-anchor="middle" font-size="13" font-weight="700">🔎 Search index</text>
+  <text x="452" y="253" text-anchor="middle" font-size="10" class="muted-t">keyword / filters</text>
+
+  <rect x="540" y="98" width="80" height="54" rx="10" class="box2"/>
+  <text x="580" y="120" text-anchor="middle" font-size="12" font-weight="700">🌊 Stream</text>
+  <text x="580" y="137" text-anchor="middle" font-size="10" class="muted-t">react to events now</text>
+  <rect x="540" y="172" width="80" height="54" rx="10" class="box2"/>
+  <text x="580" y="194" text-anchor="middle" font-size="12" font-weight="700">📦 Batch</text>
+  <text x="580" y="211" text-anchor="middle" font-size="10" class="muted-t">crunch periodically</text>
+  <path d="M522 160 H538" class="line"/>
+
+  <path d="M452 102 V136" stroke="var(--bad)" stroke-width="1.6" stroke-dasharray="4 3" fill="none"/>
+  <path d="M452 182 V216" stroke="var(--bad)" stroke-width="1.6" stroke-dasharray="4 3" fill="none"/>
+  <text x="400" y="290" font-size="11" fill="var(--bad)">red dashes = keep in sync — whose job?</text>
+
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>
+</svg>
+<figcaption>The five building blocks the book lists (p. 2). Stateless app code forgets each request; anything that must persist lives on the client or in the data infrastructure. Your job: choose the right blocks and combine them.</figcaption>
+</figure>
+
+<p class="big-idea">No approach is fundamentally better; everything has pros and cons. This book teaches you to ask the right questions to compare them.</p>
+
+<!-- ====================================================== -->
+<h2 id="oltp">2 · Operational vs analytical systems</h2>
+
+<p>Different people do very different things with the <i>same</i> data — often without saying so, which breeds disagreement.</p>
+
+<div class="grid">
+  <div class="card rel"><h4 class="c-rel">🛠 Operational (OLTP)</h4><p>Backend services where data is <b>created</b>. App code reads <i>and modifies</i> data based on user actions.</p><p class="muted">Backend engineers.</p></div>
+  <div class="card sca"><h4 class="c-sca">📊 Analytical (OLAP)</h4><p>A <b>read-only copy</b> of operational data, optimized for analysis.</p><p class="muted">Business analysts (BI reports) and data scientists (insights, ML/AI features).</p></div>
+  <div class="card mai"><h4 class="c-mai">🔗 The bridge roles</h4><p><b>Data engineers</b> integrate the two sides and own data infrastructure. <b>Analytics engineers</b> model and transform data for analysts.</p></div>
+</div>
+
+<div class="table-wrap">
+<table class="compare">
+  <tr><th>Property</th><th>Operational (OLTP)</th><th>Analytical (OLAP)</th></tr>
+  <tr><td>Main read</td><td><b>Point queries</b> — fetch a few records by key</td><td><b>Aggregate</b> (count/sum/avg) over huge numbers of records</td></tr>
+  <tr><td>Main write</td><td>Create/update/delete individual records</td><td>Bulk import (ETL) or event stream</td></tr>
+  <tr><td>Human user</td><td>End user of web/mobile app</td><td>Internal analyst, decision support</td></tr>
+  <tr><td>Machine use</td><td>"Is this action authorized?"</td><td>Detect fraud/abuse patterns</td></tr>
+  <tr><td>Queries</td><td>Fixed, baked into app code</td><td>Arbitrary, ad hoc exploration</td></tr>
+  <tr><td>Volume</td><td>Lots of small queries</td><td>Few queries, each complex</td></tr>
+  <tr><td>Data represents</td><td>Latest state (now)</td><td>History of events over time</td></tr>
+  <tr><td>Size</td><td>GB → TB</td><td>TB → PB</td></tr>
+</table>
+</div>
+<p class="muted">Book's Table 1-1. OLTP users can't write custom SQL (security + performance); analysts can, or use dashboards like Power BI. Hybrid: <b>product / real-time analytics</b> (Pinot, Druid, ClickHouse) — aggregate queries, but low-latency and user-facing.</p>
+
+<details class="recall"><summary>🧠 Pause &amp; recall: "Total registrations per faculty this semester" vs "Show this student's class schedule" — which is OLTP, which OLAP?</summary>
+Schedule = OLTP (point query by key, latest state, end user). Registrations per faculty = OLAP (aggregate over many records, decision support).</details>
+
+<!-- ====================================================== -->
+<h2 id="warehouse">3 · Warehouses, lakes &amp; pipelines</h2>
+
+<p>Since the late '80s, analytics moved off OLTP databases into a separate <b>data warehouse</b>. Why not just query the operational DBs?</p>
+<div class="grid">
+  <div class="card"><h4>🏝 Data silos</h4><p>Data is spread over dozens or hundreds of OLTP systems — hard to combine in one query.</p></div>
+  <div class="card"><h4>📐 Wrong layout</h4><p>Schemas good for OLTP are poor for analytics (Ch.3–4).</p></div>
+  <div class="card"><h4>🐢 Hurts users</h4><p>Expensive analytic queries slow the app for everyone.</p></div>
+  <div class="card"><h4>🔒 Access rules</h4><p>OLTP may sit in a network analysts can't reach, for security/compliance.</p></div>
+</div>
+
+<figure>
+<svg viewBox="0 0 640 250" role="img" aria-label="Several operational databases and SaaS APIs feed an extract-transform-load process into a data warehouse for analysts, and raw files into a data lake for data scientists; reverse ETL sends results back to operational systems">
+  <g>
+    <rect x="0" y="20" width="120" height="38" rx="8" class="box"/><text x="60" y="44" text-anchor="middle" font-size="12">🗄 OLTP DB A</text>
+    <rect x="0" y="68" width="120" height="38" rx="8" class="box"/><text x="60" y="92" text-anchor="middle" font-size="12">🗄 OLTP DB B</text>
+    <rect x="0" y="116" width="120" height="38" rx="8" class="box"/><text x="60" y="140" text-anchor="middle" font-size="12">☁ SaaS API</text>
+    <text x="60" y="12" text-anchor="middle" font-size="10" class="muted-t">operational systems</text>
+  </g>
+  <path d="M120 39 L190 80 M120 87 H190 M120 135 L190 95" class="line"/>
+  <rect x="192" y="58" width="130" height="58" rx="10" fill="var(--accent)"/>
+  <text x="257" y="82" text-anchor="middle" font-size="13" font-weight="700" class="white">Extract → Transform</text>
+  <text x="257" y="100" text-anchor="middle" font-size="13" font-weight="700" class="white">→ Load (ETL)</text>
+  <text x="257" y="134" text-anchor="middle" font-size="10" class="muted-t">dump or continuous stream;</text>
+  <text x="257" y="147" text-anchor="middle" font-size="10" class="muted-t">ELT = transform after loading</text>
+
+  <path d="M322 75 L410 45" class="line" marker-end="url(#ar4)"/>
+  <path d="M322 100 L410 140" class="line" marker-end="url(#ar4)"/>
+  <rect x="412" y="20" width="140" height="50" rx="10" fill="var(--sca)" opacity=".85"/>
+  <text x="482" y="42" text-anchor="middle" font-size="13" font-weight="700" class="white">🏛 Data warehouse</text>
+  <text x="482" y="59" text-anchor="middle" font-size="10" class="white">relational, SQL, cleaned</text>
+  <rect x="412" y="115" width="140" height="50" rx="10" fill="var(--mai)" opacity=".85"/>
+  <text x="482" y="137" text-anchor="middle" font-size="13" font-weight="700" class="white">🌊 Data lake</text>
+  <text x="482" y="154" text-anchor="middle" font-size="10" class="white">raw files, any format</text>
+  <text x="600" y="49" text-anchor="middle" font-size="18">📊</text><text x="600" y="66" text-anchor="middle" font-size="10" class="muted-t">analysts</text>
+  <text x="600" y="144" text-anchor="middle" font-size="18">🧪</text><text x="600" y="161" text-anchor="middle" font-size="10" class="muted-t">data scientists</text>
+
+  <path d="M482 165 C482 235, 60 235, 60 160" stroke="var(--rel)" stroke-width="1.8" stroke-dasharray="5 4" fill="none" marker-end="url(#ar5)"/>
+  <text x="270" y="228" text-anchor="middle" font-size="11" fill="var(--rel)">reverse ETL: ML model / results back into production</text>
+  <defs>
+    <marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker>
+    <marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--rel)"/></marker>
+  </defs>
+</svg>
+<figcaption>Expands the book's Fig. 1-1. An enterprise usually has <b>many</b> operational DBs but <b>one</b> warehouse, so analysts can join across them. ETL from SaaS goes via vendor APIs (connector services like Fivetran, Airbyte).</figcaption>
+</figure>
+
+<div class="grid">
+  <div class="card"><h4>🔀 HTAP</h4><p>Hybrid transactional/analytical processing: OLTP + analytics in one system. Often two engines behind one interface. Useful when one app needs both (e.g. fraud detection) — but it <b>doesn't replace</b> the warehouse.</p></div>
+  <div class="card"><h4>🌊 Data lake</h4><p>Just files — no imposed format or schema (Parquet, text, images, feature vectors…). Cheaper (object storage) and suits data scientists who use Pandas, scikit-learn, Spark rather than SQL. <b>Sushi principle:</b> "raw data is better".</p></div>
+  <div class="card"><h4>🚀 Beyond the lake</h4><p>Event <b>streams</b> let analytics react in seconds (e.g. block fraud). <b>Reverse ETL</b> pushes analytic outputs back to operational systems. DataOps, governance, privacy rules raise the bar.</p></div>
+</div>
+
+<p class="muted">Bigger trend: the larger the scale, the more specialized systems become. General-purpose works fine for small data.</p>
+
+<!-- ====================================================== -->
+<h2 id="sor">4 · Systems of record vs derived data</h2>
+
+<figure>
+<svg viewBox="0 0 640 200" role="img" aria-label="A system of record feeds derived data systems: cache, search index, materialized view, warehouse copy and ML model. Derived data can be rebuilt from the source.">
+  <rect x="10" y="60" width="170" height="80" rx="12" fill="var(--rel)"/>
+  <text x="95" y="90" text-anchor="middle" font-size="14" font-weight="700" class="white">System of record</text>
+  <text x="95" y="108" text-anchor="middle" font-size="11" class="white">source of truth · written first</text>
+  <text x="95" y="124" text-anchor="middle" font-size="11" class="white">each fact once (normalized)</text>
+  <g>
+    <path d="M180 100 L300 30" class="line" marker-end="url(#ar6)"/>
+    <path d="M180 100 L300 70" class="line" marker-end="url(#ar6)"/>
+    <path d="M180 100 L300 110" class="line" marker-end="url(#ar6)"/>
+    <path d="M180 100 L300 150" class="line" marker-end="url(#ar6)"/>
+    <path d="M180 100 L300 185" class="line" marker-end="url(#ar6)"/>
+  </g>
+  <g font-size="12">
+    <rect x="302" y="16" width="170" height="28" rx="6" class="box"/><text x="387" y="35" text-anchor="middle">⚡ cache</text>
+    <rect x="302" y="56" width="170" height="28" rx="6" class="box"/><text x="387" y="75" text-anchor="middle">🔎 search index</text>
+    <rect x="302" y="96" width="170" height="28" rx="6" class="box"/><text x="387" y="115" text-anchor="middle">🪞 materialized view</text>
+    <rect x="302" y="136" width="170" height="28" rx="6" class="box"/><text x="387" y="155" text-anchor="middle">🏛 warehouse copy</text>
+    <rect x="302" y="171" width="170" height="28" rx="6" class="box"/><text x="387" y="190" text-anchor="middle">🤖 trained ML model</text>
+  </g>
+  <text x="560" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sca)">Derived data</text>
+  <text x="560" y="100" text-anchor="middle" font-size="11" class="muted-t">redundant copy,</text>
+  <text x="560" y="115" text-anchor="middle" font-size="11" class="muted-t">fast reads,</text>
+  <text x="560" y="130" text-anchor="middle" font-size="11" class="muted-t">lose it → rebuild it</text>
+  <defs><marker id="ar6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>
+</svg>
+<figcaption>If a derived system disagrees with the system of record, the system of record is right — by definition. Analytical systems are almost always derived.</figcaption>
+</figure>
+
+<div class="callout tip"><b>It's about use, not the tool.</b> The same PostgreSQL can be a system of record in one app and a derived cache in another. Being explicit about "what's derived from what" brings clarity to a confusing architecture — and raises the real question: <i>what process updates derived data when the source changes?</i> (Ch.11–13.)</div>
+
+<!-- ====================================================== -->
+<h2 id="cloud">5 · Cloud vs self-hosting</h2>
+
+<p>Build or buy? Rule of thumb: do in-house what's a <b>core competency</b> or competitive advantage; outsource what's routine. For software, two separate choices: <i>who builds it</i> and <i>who runs it</i>.</p>
+
+<figure>
+<svg viewBox="0 0 640 140" role="img" aria-label="Spectrum from bespoke software you write and run, through off-the-shelf software you self-host on premises or on IaaS VMs, to cloud services and SaaS run by a vendor">
+  <defs><linearGradient id="spec" x1="0" x2="1"><stop offset="0" stop-color="var(--rel)"/><stop offset="1" stop-color="var(--sca)"/></linearGradient></defs>
+  <rect x="10" y="40" width="620" height="16" rx="8" fill="url(#spec)" opacity=".8"/>
+  <text x="10" y="28" font-size="12" font-weight="700" fill="var(--rel)">more control · more work</text>
+  <text x="630" y="28" text-anchor="end" font-size="12" font-weight="700" fill="var(--sca)">less control · less work</text>
+  <g font-size="12">
+    <circle cx="70" cy="48" r="7" fill="var(--card)" stroke="var(--fg)"/><text x="70" y="80" text-anchor="middle" font-weight="700">Bespoke</text><text x="70" y="96" text-anchor="middle" font-size="10" class="muted-t">you write &amp; run it</text>
+    <circle cx="240" cy="48" r="7" fill="var(--card)" stroke="var(--fg)"/><text x="240" y="80" text-anchor="middle" font-weight="700">Self-hosted</text><text x="240" y="96" text-anchor="middle" font-size="10" class="muted-t">off-the-shelf (e.g. MySQL)</text><text x="240" y="110" text-anchor="middle" font-size="10" class="muted-t">on premises or IaaS VM</text>
+    <circle cx="420" cy="48" r="7" fill="var(--card)" stroke="var(--fg)"/><text x="420" y="80" text-anchor="middle" font-weight="700">Managed cloud service</text><text x="420" y="96" text-anchor="middle" font-size="10" class="muted-t">vendor operates it</text>
+    <circle cx="570" cy="48" r="7" fill="var(--card)" stroke="var(--fg)"/><text x="570" y="80" text-anchor="middle" font-weight="700">SaaS</text><text x="570" y="96" text-anchor="middle" font-size="10" class="muted-t">web UI / API only</text>
+  </g>
+</svg>
+<figcaption>Simplified from the book's Fig. 1-2. "On premises" includes a rented datacenter rack — what matters is who operates the software.</figcaption>
+</figure>
+
+<div class="grid">
+  <div class="card"><h4 style="color:var(--good)">👍 Cloud is good when…</h4><p>You don't already know how to run the system (hiring/training is expensive); load <b>varies a lot</b> (e.g. interactive analytics: huge bursts, then idle); you want a specialist's operational expertise.</p></div>
+  <div class="card"><h4 style="color:var(--bad)">👎 But you lose control</h4><p>Missing feature → ask politely. Outage → wait. Bug → no internals or server logs. Shutdown, price hike or product change → forced migration (<b>vendor lock-in</b>). Sanctions risk across borders. Must trust them with data security.</p></div>
+  <div class="card"><h4>🏠 Self-hosting is good when…</h4><p>You have the skills, load is <b>predictable</b>, you need deep tuning for your workload, or you have specialist needs (e.g. high-frequency trading's hardware control).</p></div>
+</div>
+
+<div class="widget" data-widget="provisioning"></div>
+
+<h3>Cloud native architecture</h3>
+<p>Systems designed <i>for</i> the cloud (not just hosted there) can be faster on the same hardware, recover faster, scale quicker and handle bigger datasets.</p>
+<div class="table-wrap">
+<table class="compare">
+  <tr><th>Category</th><th>Self-hosted</th><th>Cloud native</th></tr>
+  <tr><td>Operational / OLTP</td><td>MySQL, PostgreSQL, MongoDB</td><td>AWS Aurora, Azure SQL DB Hyperscale, Google Cloud Spanner</td></tr>
+  <tr><td>Analytical / OLAP</td><td>Teradata, ClickHouse, Spark</td><td>Snowflake, Google BigQuery, Azure Synapse Analytics</td></tr>
+</table>
+</div>
+
+<figure>
+<svg viewBox="0 0 640 200" role="img" aria-label="Traditional: one machine holds CPU, RAM and disk. Cloud native: stateless compute nodes read from a separate durable storage service such as object storage; local disk is only a cache">
+  <text x="140" y="20" text-anchor="middle" font-size="13" font-weight="700">Traditional</text>
+  <rect x="70" y="35" width="140" height="130" rx="12" class="box"/>
+  <rect x="90" y="50" width="100" height="30" rx="6" fill="var(--rel)" opacity=".8"/><text x="140" y="70" text-anchor="middle" font-size="12" class="white">CPU + RAM</text>
+  <rect x="90" y="92" width="100" height="56" rx="6" fill="var(--sca)" opacity=".8"/><text x="140" y="116" text-anchor="middle" font-size="12" class="white">local disk</text><text x="140" y="132" text-anchor="middle" font-size="10" class="white">(RAID = durable)</text>
+  <text x="140" y="185" text-anchor="middle" font-size="11" class="muted-t">storage + compute on one machine</text>
+
+  <line x1="300" y1="15" x2="300" y2="190" stroke="var(--rule)"/>
+
+  <text x="470" y="20" text-anchor="middle" font-size="13" font-weight="700">Cloud native · disaggregated</text>
+  <g>
+    <rect x="345" y="35" width="70" height="46" rx="8" fill="var(--rel)" opacity=".8"/><text x="380" y="56" text-anchor="middle" font-size="11" class="white">compute</text><text x="380" y="71" text-anchor="middle" font-size="9" class="white">disk = cache</text>
+    <rect x="435" y="35" width="70" height="46" rx="8" fill="var(--rel)" opacity=".8"/><text x="470" y="56" text-anchor="middle" font-size="11" class="white">compute</text><text x="470" y="71" text-anchor="middle" font-size="9" class="white">disk = cache</text>
+    <rect x="525" y="35" width="70" height="46" rx="8" fill="var(--rel)" opacity=".8"/><text x="560" y="56" text-anchor="middle" font-size="11" class="white">compute</text><text x="560" y="71" text-anchor="middle" font-size="9" class="white">disk = cache</text>
+  </g>
+  <path d="M380 81 L450 115 M470 81 V115 M560 81 L490 115" class="line"/>
+  <text x="600" y="104" text-anchor="end" font-size="10" fill="var(--bad)">network!</text>
+  <rect x="360" y="117" width="220" height="48" rx="10" fill="var(--sca)" opacity=".85"/>
+  <text x="470" y="138" text-anchor="middle" font-size="12" font-weight="700" class="white">storage service</text>
+  <text x="470" y="155" text-anchor="middle" font-size="10" class="white">object store (S3, Blob, R2) · multitenant</text>
+  <text x="470" y="185" text-anchor="middle" font-size="11" class="muted-t">scale compute and storage independently</text>
+</svg>
+<figcaption><b>Separation of storage and compute.</b> Local disks vanish when an instance fails or is resized, so they're treated as ephemeral caches. Virtual block disks (EBS etc.) work but turn every I/O into a network call; cloud native systems instead store large blocks in object storage and small values in a separate service.</figcaption>
+</figure>
+
+<div class="grid">
+  <div class="card"><h4>🧱 Layering</h4><p>Cloud services build on lower-level cloud services: Snowflake builds on S3; other services build on Snowflake. Higher-level = more use-case-specific. If one fits, use it; if none fits, build from lower-level blocks.</p></div>
+  <div class="card"><h4>🏢 Multitenancy</h4><p>Many customers share the same hardware and service. Better utilization and easier scaling — but needs careful isolation of performance and security.</p></div>
+  <div class="card"><h4>🧑‍🔧 Ops still matters</h4><p>DevOps/SRE: automation, ephemeral VMs, frequent updates, learning from incidents, preserving knowledge. In the cloud, <b>capacity planning becomes financial planning</b> and performance tuning becomes cost optimization. Mind quotas; integration between services is real work.</p></div>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="dist">6 · Distributed vs single-node</h2>
+
+<p>A <b>distributed system</b> = several machines communicating over a network; each participating process is a <b>node</b>. Nine reasons to go distributed:</p>
+
+<div class="grid">
+  <div class="card"><h4>🌐 Inherent</h4><p>Multiple users on their own devices.</p></div>
+  <div class="card"><h4>☁ Between services</h4><p>Data stored in one service, processed in another.</p></div>
+  <div class="card rel"><h4>🛡 Fault tolerance</h4><p>One machine dies, another takes over.</p></div>
+  <div class="card sca"><h4>📈 Scalability</h4><p>More data/compute than one machine can handle.</p></div>
+  <div class="card"><h4>🌏 Latency</h4><p>Servers near users worldwide.</p></div>
+  <div class="card"><h4>🎈 Elasticity</h4><p>Scale up/down with demand; pay for what you use.</p></div>
+  <div class="card"><h4>🔧 Special hardware</h4><p>Disk-heavy storage nodes, CPU-heavy analytics, GPUs for ML.</p></div>
+  <div class="card"><h4>⚖ Legal</h4><p>Data residency laws: keep citizens' data in-country.</p></div>
+  <div class="card mai"><h4>🌱 Sustainability</h4><p>Run jobs where/when renewable power is plentiful.</p></div>
+</div>
+
+<div class="callout warn"><b>But distribution costs a lot:</b>
+<ul style="margin:.4em 0 0">
+  <li>Any network call can fail or <b>time out</b> — and then you don't know if the request was processed; blind retry may be unsafe (Ch.9).</li>
+  <li>A network call is <b>vastly slower</b> than a function call. Sometimes a single-threaded program on one machine beats a 100+ core cluster.</li>
+  <li>Debugging is hard → you need <b>observability</b> (e.g. tracing with OpenTelemetry, Zipkin, Jaeger).</li>
+  <li>Each service with its own DB → <b>cross-service consistency becomes the app's problem</b>.</li>
+</ul></div>
+
+<p class="big-idea">Don't rush to distribute. Hardware has grown huge and fast; with single-node databases like SQLite or DuckDB, many workloads fit on one machine.</p>
+
+<h3>Microservices and serverless</h3>
+<div class="grid">
+  <div class="card"><h4>🧩 Microservices</h4>
+    <p>Each service: one purpose, an API, one owning team, <b>its own database</b> (a shared DB makes its schema part of everyone's API).</p>
+    <p>👍 independent deploys, right-sized resources, freedom to change internals.</p>
+    <p>👎 hard to test, per-service infra (deploy, logs, monitoring, on-call — hence Kubernetes), APIs hard to evolve (OpenAPI/gRPC help).</p>
+    <p><b>A technical solution to a people problem</b>: lets teams move independently. Small org with few teams? Probably unnecessary overhead.</p></div>
+  <div class="card"><h4>⚡ Serverless (FaaS)</h4>
+    <p>Cloud allocates and frees resources per request; you pay only while your code runs — metered billing for compute, like cloud storage did for disks.</p>
+    <p>👎 execution time limits, restricted runtimes, slow <b>cold starts</b>. It still runs on servers — just not the same one each time. "Serverless" is also used loosely to mean "autoscaling, billed by usage".</p></div>
+</div>
+
+<p class="muted"><b>Cloud vs supercomputing (HPC):</b> HPC runs huge batch jobs (weather, molecular simulation), checkpoints, and on a node failure stops everything and restarts from the checkpoint; trusts its users; uses special topologies; nodes close together. Cloud must stay <i>continuously available</i>, isolate untrusting tenants, and may span regions. This book is about the latter.</p>
+
+<!-- ====================================================== -->
+<h2 id="law">7 · Data systems, law &amp; society</h2>
+
+<p>Architecture is shaped not just by business needs but by the <b>rights of the people whose data you hold</b>. GDPR (EU, 2018), CCPA, the EU AI Act — and automated decisions about loans, jobs or policing affect lives.</p>
+
+<div class="grid">
+  <div class="card"><h4>🗑 Right to be forgotten</h4><p>GDPR lets people demand erasure. But many systems are built on <b>immutable, append-only logs</b>. How do you delete from the middle of an immutable file — or from derived data such as ML training sets? No settled answer yet.</p></div>
+  <div class="card"><h4>💸 True cost of storing data</h4><p>Not just the storage bill: leak liability, reputational damage, fines for non-compliance, government demands, and real safety risks for users (e.g. location history).</p></div>
+  <div class="card"><h4>✂ Data minimization</h4><p><i>Datensparsamkeit</i>: some data isn't worth keeping — delete it. Opposite of "store everything just in case". Fits GDPR: collect only for a specified purpose, don't reuse for others, don't keep longer than needed.</p></div>
+</div>
+<p class="muted">Industry standards push the same way: PCI for card payments, SOC 2 Type 2 audits for software vendors. The book returns to ethics in Ch.14. <i>Local note (not from the book):</i> Indonesia has its own Personal Data Protection Law (UU PDP, No. 27/2022) — check specifics with the relevant BINUS compliance/legal function rather than assuming.</p>
+
+<!-- ====================================================== -->
+<h2 id="practice">8 · Practice — answer from memory</h2>
+<p class="muted">Scroll up = cheating yourself. <span class="score" data-quiz-score></span></p>
+
+<div class="quiz" data-answer="2">
+  <div class="q">1. "Fetch this student's current grades by student ID." Which access pattern is this?</div>
+  <div class="opts">
+    <button class="opt">Analytical aggregate over history</button>
+    <button class="opt">Bulk import into a warehouse</button>
+    <button class="opt">Operational point query by key</button>
+    <button class="opt">Ad hoc exploration by analysts</button>
+  </div>
+  <div class="why">A few records, looked up by key, latest state, for an end user = OLTP point query.</div>
+</div>
+
+<div class="quiz" data-answer="0">
+  <div class="q">2. Which is NOT a reason the book gives for a separate data warehouse?</div>
+  <div class="opts">
+    <button class="opt">OLTP databases cannot run SQL queries</button>
+    <button class="opt">Data is siloed across many systems</button>
+    <button class="opt">Analytic queries slow down app users</button>
+    <button class="opt">OLTP may sit in a restricted network</button>
+  </div>
+  <div class="why">SQL works fine for both — that's why the same DB was used for both at first. The reasons are silos, unsuitable layouts, performance impact and access restrictions.</div>
+</div>
+
+<div class="quiz" data-answer="3">
+  <div class="q">3. The search index says a course has 30 seats; the main database says 28. Which is correct?</div>
+  <div class="opts">
+    <button class="opt">The search index, it is newer</button>
+    <button class="opt">Whichever was updated most recently</button>
+    <button class="opt">Neither; both must be rebuilt now</button>
+    <button class="opt">The database, the system of record</button>
+  </div>
+  <div class="why">If derived data disagrees with the system of record, the system of record is right by definition. Rebuild the index from it.</div>
+</div>
+
+<div class="quiz" data-answer="1">
+  <div class="q">4. What's the key difference between a data lake and a data warehouse?</div>
+  <div class="opts">
+    <button class="opt">A lake stores only operational records</button>
+    <button class="opt">A lake holds files with no imposed schema</button>
+    <button class="opt">A lake can only be queried with SQL</button>
+    <button class="opt">A lake is the system of record</button>
+  </div>
+  <div class="why">Warehouse = relational schema, SQL. Lake = just files in any format (Parquet, text, images…), cheaper, raw ("sushi principle").</div>
+</div>
+
+<div class="quiz" data-answer="2">
+  <div class="q">5. Your team knows the database well and its load is steady all year. The book's rule of thumb suggests…</div>
+  <div class="opts">
+    <button class="opt">Cloud is always the cheaper option</button>
+    <button class="opt">Serverless functions for every query</button>
+    <button class="opt">Self-hosting is often cheaper here</button>
+    <button class="opt">Microservices before anything else</button>
+  </div>
+  <div class="why">Existing skills + predictable load → buying and running your own machines is often cheaper. Cloud shines for variable load or unfamiliar systems.</div>
+</div>
+
+<div class="quiz" data-answer="0">
+  <div class="q">6. Why do cloud native databases treat a VM's local disk as only a cache?</div>
+  <div class="opts">
+    <button class="opt">It's lost if the instance fails or moves</button>
+    <button class="opt">Local disks are slower than networks</button>
+    <button class="opt">Cloud providers forbid writing to them</button>
+    <button class="opt">Local disks cannot be used with RAID</button>
+  </div>
+  <div class="why">When an instance dies or is replaced by a bigger/smaller one on another machine, its local disk is gone. Durable data goes to a separate storage service.</div>
+</div>
+
+<div class="quiz" data-answer="1">
+  <div class="q">7. According to the book, microservices are primarily…</div>
+  <div class="opts">
+    <button class="opt">A way to make each request faster</button>
+    <button class="opt">A technical fix for a people problem</button>
+    <button class="opt">Required for any cloud deployment</button>
+    <button class="opt">A way to avoid needing operations</button>
+  </div>
+  <div class="why">They let many teams progress independently. With few teams, they're often unnecessary overhead.</div>
+</div>
+
+<div class="quiz" data-answer="3">
+  <div class="q">8. A request to another service times out. What do you actually know?</div>
+  <div class="opts">
+    <button class="opt">The request was never received</button>
+    <button class="opt">The service has crashed for good</button>
+    <button class="opt">Retrying is always perfectly safe</button>
+    <button class="opt">Not whether it was processed</button>
+  </div>
+  <div class="why">A timeout tells you nothing about whether the other side did the work — so blind retries can be unsafe. Deep dive in Ch.9.</div>
+</div>
+<p class="no-print"><button class="btn" data-quiz-reset>↺ Reset quiz</button></p>
+
+<h3>Apply it to your own work</h3>
+<p>Pick one system you work on at BINUS. In 4 lines:</p>
+<ol>
+  <li>Is it mainly <b>operational or analytical</b>? Who are its users?</li>
+  <li>What is its <b>system of record</b>, and what <b>derived data</b> hangs off it (caches, indexes, reports, warehouse copies)? Who keeps them in sync?</li>
+  <li>Is it <b>self-hosted or cloud</b>? Give one reason the choice fits (or doesn't) — skills, load variability, control.</li>
+  <li>Is it <b>distributed</b>? Which of the nine reasons justifies it — or could it run on one node?</li>
+</ol>
+<p class="muted">Paste your answer to your teacher (Claude) for feedback.</p>
+
+<!-- ====================================================== -->
+<h2>Read next</h2>
+<div class="card">
+  <h4>📖 Primary source</h4>
+  <p>Martin Kleppmann &amp; Chris Riccomini, <i>Designing Data-Intensive Applications</i>, 2nd ed. (O'Reilly, 2026), Chapter 1, pp. 1–25 (PDF pages 25–49) — your PDF in <code>03_Resources/Books &amp; Reading</code>. Read it <b>after</b> this lesson.</p>
+  <p><b>If you only read one reference:</b> <a href="https://www.usenix.org/system/files/conference/hotos15/hotos15-paper-mcsherry.pdf">"Scalability! But at What COST?"</a> (McSherry, Isard &amp; Murray, HotOS 2015) — the paper behind "one laptop thread can beat a big cluster". Short and eye-opening.</p>
+</div>
+
+<div class="ask">💬 <b>Stuck or curious?</b> Ask your teacher (Claude) — "is our reporting DB a warehouse or a lake?", "when would HTAP make sense?", "quiz me on OLTP vs OLAP tomorrow".</div>
+
+<div class="pager">
+  <span class="muted">← start of course</span>
+  <span><a href="../reference/ch1-cheatsheet.html">Ch.1 cheat sheet</a> · <a href="0002-ch2-defining-nonfunctional-requirements.html">Lesson 0002 · Ch.2 Nonfunctional Requirements →</a></span>
+</div>
+
+</main>
+</body>
+</html>
