@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0005 — Dotfiles and Shell Customization</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Part 4</div>
+    <h1>Dotfiles and Shell Customization</h1>
+    <p class="dek">Your shell rebuilds itself from plain-text files every time it starts. Edit those files and every new terminal gets your PATH, aliases and shortcuts. Keep them in Git and any machine can feel like home in a minute.</p>
+    <div class="meta">
+      <span>15–20 minutes</span>
+      <span>WSL + bash</span>
+      <span>Read first, practise later</span>
+      <span>Sandbox only</span>
+    </div>
+  </header>
+
+  <div class="mission-strip">
+    <strong>Why this lesson exists.</strong> Installing the .NET SDK, Node or a Python tool usually ends with "add this to your PATH". Typing <code>git status</code> 50 times a day is a candidate for an alias. A new laptop or WSL distro shouldn't cost you a day of re-setup.
+  </div>
+
+  <section>
+    <h2>The one mental model</h2>
+    <blockquote>
+      Every new interactive bash <strong>sources</strong> its startup files (mainly <code>~/.bashrc</code>). Whatever those files <code>export</code>, <code>alias</code> or define exists in that shell, and exported values pass to its children. To change "my shell", you edit a <strong>dotfile</strong>, then open a new terminal or <code>source</code> it.
+    </blockquote>
+
+    <div class="flow">
+      <div class="flow-node">open terminal</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">bash sources<br><code>~/.bashrc</code></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">PATH, aliases,<br>functions, prompt</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">your customised<br>shell</div>
+    </div>
+    <p>This connects directly to lesson 0002: <code>.bashrc</code> must be <em>sourced</em>, not run, because a child process couldn't change your shell.</p>
+  </section>
+
+  <section>
+    <h2>Knowledge you need</h2>
+
+    <h3>Dotfiles</h3>
+    <p>A <strong>dotfile</strong> is a plain-text config file whose name starts with <code>.</code>, which hides it from <code>ls</code> (use <code>ls -a</code>). That's just a convention. Common ones:</p>
+    <ul>
+      <li>bash: <code>~/.bashrc</code>, <code>~/.bash_profile</code> (or <code>~/.profile</code>)</li>
+      <li>git: <code>~/.gitconfig</code></li>
+      <li>ssh: <code>~/.ssh/config</code> (lesson 0004)</li>
+      <li>tmux: <code>~/.tmux.conf</code></li>
+      <li>vim: <code>~/.vimrc</code></li>
+    </ul>
+    <p><strong>Which bash file?</strong> Startup rules are complicated (login vs interactive shells). The practical rule: put aliases, functions, PATH changes and prompt settings in <code>~/.bashrc</code>. On Ubuntu (including WSL), the default <code>~/.profile</code> already sources <code>~/.bashrc</code> for login shells. After editing, run <code>source ~/.bashrc</code> or open a new terminal.</p>
+
+    <h3>Extending PATH</h3>
+    <div class="code-card"><pre>export PATH="$PATH:$HOME/.dotnet/tools"   # append a folder to the search list</pre></div>
+    <p>Read it as: "new PATH = old PATH + one more folder, and export it so children inherit it." This is the most common line you'll paste from install guides. Always keep <code>$PATH</code> in it, because <code>export PATH="/some/dir"</code> alone replaces the list and breaks <code>ls</code>, <code>git</code> and everything else in that shell.</p>
+
+    <h3>Aliases</h3>
+    <div class="code-card"><pre>alias ll="ls -lh"        # no spaces around =
+alias gs="git status"
+alias mv="mv -i"         # safer default: ask before overwriting
+alias dc=cd              # typo forgiveness
+
+alias ll                 # show a definition → ll='ls -lh'
+\ls                      # bypass an alias once
+unalias ll               # remove it</pre></div>
+    <p>An alias is <em>text replacement</em> of the first word before the command runs. Limitation: it can't put an argument in the <em>middle</em>. For that, use a function.</p>
+
+    <h3>Functions</h3>
+    <div class="code-card"><pre>mkcd() {                 # make a folder and enter it
+    mkdir -p "$1" &amp;&amp; cd "$1"
+}</pre></div>
+    <p>Functions take <code>$1</code>, <code>$@</code> and so on, like scripts. Unlike a script, a function runs <em>in the current shell</em>, so its <code>cd</code> sticks. That's why the official <em>marco/polo</em> exercise is solved with functions loaded by <code>source</code>.</p>
+
+    <h3>History search</h3>
+    <p><strong>Ctrl-R</strong>, then type part of an old command, finds it in your history. Press Ctrl-R again for older matches, Enter to run, or an arrow key to edit first. With <a href="https://github.com/junegunn/fzf">fzf</a>'s shell integration, Ctrl-R becomes a fuzzy, interactive list.</p>
+
+    <h3>Installing tools</h3>
+    <div class="code-card"><pre>$ sudo apt install ripgrep fd-find tldr   # Ubuntu/WSL package manager
+$ rg "TODO" src/                          # ripgrep: faster grep
+$ tldr tar                                # short, example-first help</pre></div>
+    <p>Package managers download, install and update for you: <code>apt</code> on Ubuntu/WSL, Homebrew on macOS, <code>dnf</code>, <code>pacman</code>. Package names vary. On Ubuntu, <code>fd</code> is packaged as <code>fd-find</code> and the command is <code>fdfind</code>. Check with <code>apt search</code> or <a href="https://command-not-found.com/">command-not-found.com</a>.</p>
+
+    <h3>The <code>curl | bash</code> warning</h3>
+    <div class="code-card"><pre># convenient but blind:
+curl -fsSL https://example.com/install.sh | bash
+
+# safer: download → read → run
+curl -fsSL https://example.com/install.sh -o install.sh
+less install.sh
+bash install.sh</pre></div>
+    <p>Piping straight to bash runs code you have never seen, with your permissions. Read it first.</p>
+
+    <h3>Organising dotfiles</h3>
+    <div class="code-card"><pre>~/dotfiles/              ← a Git repo
+  bashrc
+  gitconfig
+  tmux.conf
+  install.sh             ← creates symlinks:
+                             ln -sf ~/dotfiles/bashrc ~/.bashrc
+                             ln -sf ~/dotfiles/tmux.conf ~/.tmux.conf</pre></div>
+    <p>Put the real files in one version-controlled folder and <strong>symlink</strong> them into place. You get one-command setup on a new machine, the same behaviour everywhere, easy syncing, and history of every change. Read other people's dotfiles for ideas, but don't copy whole configs blindly.</p>
+
+    <h3>Frameworks, AI and terminals (brief)</h3>
+    <ul>
+      <li><strong>Plugins:</strong> zsh users often add syntax highlighting, autosuggestions and a prompt theme. You can install single plugins instead of a big framework like oh-my-zsh, which can slow shell startup. The fish shell has many of these built in.</li>
+      <li><strong>AI in the shell:</strong> tools can turn English into commands, process messy text in a pipeline, or act as a whole "meta-shell" (like Claude Code). Same rule as <code>curl | bash</code>: read a generated command before you run it.</li>
+      <li><strong>Terminal emulator:</strong> the window your shell runs in (on Windows, usually Windows Terminal). It's worth tuning the font, colours, scrollback and shortcuts.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Connect it to your work</h2>
+    <ul>
+      <li><strong>.NET global tools</strong> (<code>dotnet tool install -g …</code>) install to <code>~/.dotnet/tools</code>. If the command isn't found, that folder is missing from PATH.</li>
+      <li><strong>Aliases to consider:</strong> <code>alias dr="dotnet run"</code>, <code>alias dw="dotnet watch"</code>, <code>alias pm="python manage.py"</code>, <code>alias gs="git status"</code>. Run the official top-10-commands exercise first so you alias what you actually type.</li>
+      <li><strong>Function idea:</strong> <code>venv() { source .venv/bin/activate; }</code> works because a function runs in your shell (lesson 0002).</li>
+      <li><strong>Security:</strong> dotfiles repos are often public. Never put tokens, passwords or <code>export API_KEY=…</code> in them. Keep secrets in a separate, uncommitted file (for example <code>~/.bashrc.local</code>, sourced if it exists) or a secret manager. Never commit <code>~/.ssh/</code> private keys.</li>
+      <li><strong>Work machines:</strong> before installing tools on a work laptop or server, check your team's approved-software process. The sandbox is for experiments.</li>
+    </ul>
+  </section>
+
+  <section class="primary-source">
+    <h2>Primary source</h2>
+    <p>Official Topic 2 notes: sections <em>Customizing the Shell</em>, <em>AI in the Shell</em> and <em>Terminal Emulators</em> on the <a href="https://missing.csail.mit.edu/2026/command-line-environment/">Command-line Environment</a> page. Official exercises: <em>Aliases and Dotfiles</em> and <em>marco/polo</em>.</p>
+  </section>
+
+  <section>
+    <div class="callout">
+      <strong>Practise later.</strong> This is the last part of Topic 2. When you're ready, do the quizzes and sandboxes from 0002 → 0005 in order, then paste your retrieval answers in chat.
+    </div>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 1</div>
+      <p class="quiz-question">You add <code>alias gs="git status"</code> to <code>~/.bashrc</code> but <code>gs</code> says "command not found" in the same terminal. Why?</p>
+      <div class="quiz-options">
+        <button data-answer="wrong">Aliases need root to take effect.</button>
+        <button data-answer="correct">The running shell read .bashrc at startup; run source ~/.bashrc or open a new terminal.</button>
+        <button data-answer="wrong">Aliases only work inside scripts.</button>
+        <button data-answer="wrong">The alias needs export.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">Startup files are read once, at startup. Editing the file doesn't change a shell that's already running until you source it again.</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 2</div>
+      <p class="quiz-question">An install guide says <code>export PATH="/opt/tool/bin"</code>. What goes wrong?</p>
+      <div class="quiz-options">
+        <button data-answer="wrong">Nothing; PATH accepts one folder.</button>
+        <button data-answer="correct">It replaces PATH, so ls, git and the others are no longer found in that shell.</button>
+        <button data-answer="wrong">It only affects child processes, not the shell itself.</button>
+        <button data-answer="wrong">export cannot be used with PATH.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">Keep the existing list: <code>export PATH="$PATH:/opt/tool/bin"</code>.</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 3</div>
+      <p class="quiz-question">You want <code>mkcd foo</code> to create <code>foo</code> and move into it. Which works?</p>
+      <div class="quiz-options">
+        <button data-answer="wrong">alias mkcd="mkdir -p $1 &amp;&amp; cd $1"</button>
+        <button data-answer="wrong">A script mkcd.sh run as ./mkcd.sh foo</button>
+        <button data-answer="correct">A function mkcd() { mkdir -p "$1" &amp;&amp; cd "$1"; } in ~/.bashrc</button>
+        <button data-answer="wrong">export mkcd="mkdir -p"</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">Aliases can't use arguments in the middle. A script runs in a child, so its <code>cd</code> is lost. A function takes arguments <em>and</em> runs in your current shell.</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 4</div>
+      <p class="quiz-question">What belongs in a public dotfiles repo?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">Aliases, prompt, PATH lines, tmux and git settings (no secrets).</button>
+        <button data-answer="wrong">Everything in ~/, including ~/.ssh, for a full backup.</button>
+        <button data-answer="wrong">API tokens, as long as the repo is private.</button>
+        <button data-answer="wrong">Nothing; dotfiles shouldn't be version-controlled.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">Version-control your configuration, not your credentials. Load secrets from an uncommitted local file or a secret manager.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sandbox task — 10 minutes</h2>
+    <ol class="steps">
+      <li><strong>Look first.</strong> <code>ls -a ~</code>, then <code>less ~/.bashrc</code>. Find where Ubuntu already defines <code>ll</code> or other aliases. Run <code>alias</code> to list the active ones.</li>
+      <li><strong>Back up.</strong> <code>cp ~/.bashrc ~/.bashrc.bak</code>.</li>
+      <li><strong>Add three things</strong> at the end of <code>~/.bashrc</code>: one alias (<code>alias gs="git status"</code>), one function (<code>mkcd</code>), and one PATH line (<code>export PATH="$PATH:$HOME/bin"</code>). Run <code>source ~/.bashrc</code>, then test each one. Use <code>type gs mkcd</code>.</li>
+      <li><strong>Top commands.</strong> Run <code>history | awk '{$1="";print substr($0,2)}' | sort | uniq -c | sort -n | tail -n 10</code>. Which ones deserve an alias?</li>
+      <li><strong>Ctrl-R.</strong> Press Ctrl-R, type <code>sort</code>, and recall the command from step 4.</li>
+    </ol>
+    <p class="caption">Stretch (official exercises): create <code>~/dotfiles</code>, run <code>git init</code>, move <code>bashrc</code> into it, and write <code>install.sh</code> using <code>ln -sf</code>. Then solve <em>marco/polo</em> as two functions.</p>
+  </section>
+
+  <section>
+    <h2>Retrieval practice</h2>
+    <div class="retrieval">
+      <p><strong>In your own words:</strong> you got a new WSL install. Describe how a dotfiles repo gets your shell back to normal, and why <code>.bashrc</code> changes need <code>source</code>. Use the words <em>symlink</em>, <em>startup</em>, <em>current shell</em> and <em>secrets</em>.</p>
+      <details>
+        <summary>Model answer (after you have tried)</summary>
+        <p>Clone the dotfiles repo and run its install script, which <strong>symlinks</strong> each file (<code>bashrc</code> → <code>~/.bashrc</code>) into place. Bash reads <code>~/.bashrc</code> at <strong>startup</strong>, so every new terminal now has the aliases, functions and PATH. A terminal that's already open only sees changes after <code>source ~/.bashrc</code>, which runs the file in the <strong>current shell</strong>. Running it as a script would apply the changes to a child and lose them. <strong>Secrets</strong> stay out of the repo, in an uncommitted local file or a secret manager.</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    Lesson 0005 · <a href="0004-ssh-and-tmux.html">← 0004</a> · <a href="../index.html">Course map</a> · Sources: <a href="https://missing.csail.mit.edu/2026/command-line-environment/">MIT Missing Semester 2026</a>, <a href="https://www.gnu.org/software/bash/manual/bash.html">GNU Bash manual</a> · CC BY-NC-SA
+  </footer>
+
+</div>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

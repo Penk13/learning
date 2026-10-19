@@ -18,7 +18,7 @@ The curriculum follows the official [2026 syllabus](https://missing.csail.mit.ed
 | # | Date | Topic | Official source | Status |
 |---:|---|---|---|---|
 | 1 | 12 Jan 2026 | Course Overview + Introduction to the Shell | [Course page](https://missing.csail.mit.edu/2026/course-shell/) | [Lesson 0001](lessons/0001-introduction-to-the-shell.html) |
-| 2 | 13 Jan 2026 | Command-line Environment | [Course page](https://missing.csail.mit.edu/2026/command-line-environment/) | [Lesson 0002](lessons/0002-environment-variables-and-scripts.html) (env vars + scripts); next: signals/jobs, SSH/tmux, dotfiles/aliases |
+| 2 | 13 Jan 2026 | Command-line Environment | [Course page](https://missing.csail.mit.edu/2026/command-line-environment/) | [0002](lessons/0002-environment-variables-and-scripts.html) env vars + scripts · [0003](lessons/0003-signals-and-job-control.html) signals + jobs · [0004](lessons/0004-ssh-and-tmux.html) SSH + tmux · [0005](lessons/0005-dotfiles-and-shell-customization.html) dotfiles + customization |
 | 3 | 14 Jan 2026 | Development Environment and Tools | [Course page](https://missing.csail.mit.edu/2026/development-environment/) | Planned |
 | 4 | 15 Jan 2026 | Debugging and Profiling | [Course page](https://missing.csail.mit.edu/2026/debugging-profiling/) | Planned |
 | 5 | 16 Jan 2026 | Version Control and Git | [Course page](https://missing.csail.mit.edu/2026/version-control/) | Planned |

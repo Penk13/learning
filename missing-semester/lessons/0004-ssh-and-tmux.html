@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0004 — SSH and tmux</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Part 3</div>
+    <h1>SSH and tmux</h1>
+    <p class="dek">SSH gives you a shell on another machine. tmux keeps a shell alive after you disconnect. Together they make working on a server feel like working locally, even over a bad connection.</p>
+    <div class="meta">
+      <span>15–20 minutes</span>
+      <span>WSL + bash</span>
+      <span>Read first, practise later</span>
+      <span>Sandbox only</span>
+    </div>
+  </header>
+
+  <div class="mission-strip">
+    <strong>Why this lesson exists.</strong> Deploying, reading logs, running migrations on a server, pushing to Git over SSH, or reaching a database that only listens on a private network all use SSH. A long migration that dies because your Wi-Fi blinked is exactly the problem tmux solves.
+  </div>
+
+  <section>
+    <h2>The two mental models</h2>
+    <blockquote>
+      <strong>SSH</strong> = an encrypted pipe to a shell on another machine. It carries stdin, stdout and stderr just like a local pipe, so remote commands compose with local ones. You prove who you are with a <strong>key pair</strong>: the private key stays with you, and the public key goes on the server.
+    </blockquote>
+    <blockquote>
+      <strong>tmux</strong> = a server process that <em>owns</em> your shells. Your terminal is just a viewer. Close the viewer (or lose the connection), and the shells keep running. Reattach later and everything is exactly where you left it.
+    </blockquote>
+
+    <div class="flow">
+      <div class="flow-node">your laptop<br>terminal</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">ssh<br>(encrypted pipe)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">tmux on server<br>(owns the shells)</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">your shells + jobs<br>survive disconnects</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Knowledge you need — SSH</h2>
+
+    <h3>Connecting and running commands</h3>
+    <div class="code-card"><pre>$ ssh alice@server.example.com          # interactive shell as user alice
+$ ssh alice@server ls | wc -l           # ls runs REMOTELY, wc runs LOCALLY
+$ ssh alice@server 'ls | wc -l'         # both run remotely (quoted = sent as one string)</pre></div>
+    <p>The quoting decides <em>where</em> each part runs. Your local shell interprets anything unquoted first, including <code>|</code>, <code>&gt;</code> and <code>$VAR</code>.</p>
+
+    <h3>Keys instead of passwords</h3>
+    <div class="code-card"><pre>$ ssh-keygen -a 100 -t ed25519 -f ~/.ssh/id_ed25519    # create a key pair
+#   ~/.ssh/id_ed25519      ← PRIVATE key: never share, never commit
+#   ~/.ssh/id_ed25519.pub  ← PUBLIC key: safe to give to servers / GitHub
+
+$ ssh-copy-id -i ~/.ssh/id_ed25519 alice@server        # appends .pub to server's ~/.ssh/authorized_keys</pre></div>
+    <p>Key authentication uses public-key cryptography. The server checks that you <em>hold</em> the private key without the key ever crossing the network. It's more secure and more convenient than passwords. Treat the private key like a password, and protect it with a passphrase (<code>ssh-agent</code> remembers the passphrase so you don't retype it). If you've set up GitHub over SSH, you already did these steps.</p>
+
+    <h3><code>~/.ssh/config</code>: name your hosts</h3>
+    <div class="code-card"><pre>Host vm
+    User alice
+    HostName 172.16.174.141
+    Port 2222
+    IdentityFile ~/.ssh/id_ed25519
+
+Host *.example.com          # wildcards apply defaults to many hosts
+    User alice</pre></div>
+    <p>Now <code>ssh vm</code> is enough. <code>scp</code>, <code>rsync</code>, <code>git</code> and others read the same file, so the short name works everywhere.</p>
+
+    <h3>Copying files</h3>
+    <div class="code-card"><pre>$ scp ./app.zip vm:/tmp/app.zip              # simple copy (local → remote)
+$ rsync -av --partial ./dist/ vm:/srv/app/   # only sends what changed; can resume</pre></div>
+    <p><code>rsync</code> skips files that are already identical and keeps permissions and symlinks. Prefer it for anything bigger than a single file. (Watch the trailing <code>/</code> on the source: <code>dist/</code> copies the folder's <em>contents</em>, while <code>dist</code> copies the folder itself.)</p>
+
+    <h3>Port forwarding</h3>
+    <div class="code-card"><pre>Host vm
+    ...
+    LocalForward 9999 localhost:8888   # your localhost:9999 → vm's localhost:8888
+
+# one-off equivalent on the command line:
+$ ssh -L 9999:localhost:8888 vm</pre></div>
+    <p>Traffic to <code>localhost:9999</code> on your laptop travels through the SSH tunnel and comes out on the server as <code>localhost:8888</code>. This is how you open a web UI or database that is only reachable from inside the server. The official exercises use exactly this setup.</p>
+
+    <h3>Bad connections: Mosh</h3>
+    <p><a href="https://mosh.org/">Mosh</a> is an SSH alternative that survives network changes, laptop sleep and high latency. It's optional; tmux covers the most important part, which is not losing your work.</p>
+  </section>
+
+  <section>
+    <h2>Knowledge you need — tmux</h2>
+
+    <h3>The prefix key</h3>
+    <p>Every tmux shortcut starts with the <strong>prefix</strong> <code>Ctrl-b</code>. Press <code>Ctrl-b</code>, <em>release it</em>, then press the next key. Written as <code>&lt;C-b&gt; d</code>.</p>
+
+    <h3>Hierarchy: sessions → windows → panes</h3>
+    <ul>
+      <li><strong>Session</strong>: an independent workspace (one per project or task).</li>
+      <li><strong>Window</strong>: like a browser tab inside a session.</li>
+      <li><strong>Pane</strong>: a split inside a window, so you can see several shells at once.</li>
+    </ul>
+
+    <div class="code-card"><pre># Sessions (typed in a normal shell)
+$ tmux                    # new session
+$ tmux new -s deploy      # new session named "deploy"
+$ tmux ls                 # list sessions
+$ tmux a                  # attach to the last session
+$ tmux a -t deploy        # attach to a specific one
+  &lt;C-b&gt; d                 # DETACH: leave it running in the background
+
+# Windows
+  &lt;C-b&gt; c                 # create window      (exit / Ctrl-d closes it)
+  &lt;C-b&gt; n / p             # next / previous window
+  &lt;C-b&gt; 0..9              # jump to window N
+  &lt;C-b&gt; ,                 # rename window
+  &lt;C-b&gt; w                 # list windows
+
+# Panes
+  &lt;C-b&gt; "                 # split top / bottom
+  &lt;C-b&gt; %                 # split left / right
+  &lt;C-b&gt; &lt;arrow&gt;           # move between panes
+  &lt;C-b&gt; z                 # zoom current pane (toggle)
+  &lt;C-b&gt; [                 # scrollback mode (q to leave)
+  &lt;C-b&gt; &lt;space&gt;           # cycle pane layouts</pre></div>
+
+    <h3>Why tmux beats <code>nohup</code> on servers</h3>
+    <p>From lesson 0003: closing a terminal sends <code>SIGHUP</code> to its jobs. Inside tmux, your shell's parent is the <em>tmux server</em>, not the SSH connection. When SSH drops, tmux keeps running and so does your shell. Unlike <code>nohup</code>, you can reattach and <em>interact</em> again, with full scrollback.</p>
+  </section>
+
+  <section>
+    <h2>Connect it to your work</h2>
+    <ul>
+      <li><strong>Long server tasks:</strong> <code>ssh server</code>, then <code>tmux new -s migrate</code>, then run <code>python manage.py migrate</code> or a long <code>dotnet ef database update</code>. If the connection drops, <code>ssh server</code> then <code>tmux a -t migrate</code> brings you back.</li>
+      <li><strong>Local dev layout:</strong> one tmux window with panes for <code>dotnet watch</code>, <code>npm run dev</code> and a free shell. Works the same in WSL.</li>
+      <li><strong>Git:</strong> <code>git@github.com:…</code> remotes use the same SSH keys and <code>~/.ssh/config</code>.</li>
+      <li><strong>Security:</strong> never copy a private key into a repo, chat or shared drive. Use a separate key per machine so you can revoke one without the others. For work servers, follow your organisation's access process. Practise only on your own VM or <code>localhost</code>.</li>
+    </ul>
+  </section>
+
+  <section class="primary-source">
+    <h2>Primary source</h2>
+    <p>Official Topic 2 notes: sections <a href="https://missing.csail.mit.edu/2026/command-line-environment/#remote-machines"><em>Remote Machines</em></a> and <a href="https://missing.csail.mit.edu/2026/command-line-environment/#terminal-multiplexers"><em>Terminal Multiplexers</em></a>. The notes also link a tmux tutorial. Official exercises: <em>Remote Machines (SSH)</em> and <em>Terminal Multiplexers</em>.</p>
+  </section>
+
+  <section>
+    <div class="callout">
+      <strong>Practise later.</strong> Keep reading in <a href="0005-dotfiles-and-shell-customization.html">lesson 0005</a> if you want the whole picture first.
+    </div>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 1</div>
+      <p class="quiz-question">In <code>ssh vm ls | wc -l</code>, where does <code>wc</code> run?</p>
+      <div class="quiz-options">
+        <button data-answer="wrong">On vm, because everything after ssh goes to the server.</button>
+        <button data-answer="correct">Locally. Your shell splits on the unquoted |, so only "ls" is sent to vm.</button>
+        <button data-answer="wrong">Nowhere; ssh does not support pipes.</button>
+        <button data-answer="wrong">On both machines.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">To run both remotely, quote the whole command: <code>ssh vm 'ls | wc -l'</code>.</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 2</div>
+      <p class="quiz-question">Which file is safe to paste into GitHub's "SSH keys" settings?</p>
+      <div class="quiz-options">
+        <button data-answer="wrong">~/.ssh/id_ed25519</button>
+        <button data-answer="correct">~/.ssh/id_ed25519.pub</button>
+        <button data-answer="wrong">~/.ssh/config</button>
+        <button data-answer="wrong">Either key file, since they are equivalent.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">Only the <strong>.pub</strong> (public) key leaves your machine. The private key works like a password. If it ever leaks, remove its public key from every server and account, and generate a new pair.</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 3</div>
+      <p class="quiz-question">Your SSH connection drops while a migration runs inside tmux. What state is it in?</p>
+      <div class="quiz-options">
+        <button data-answer="wrong">Killed by SIGHUP, like any terminal job.</button>
+        <button data-answer="wrong">Paused until you reconnect.</button>
+        <button data-answer="correct">Still running; ssh in again and run tmux a to reattach.</button>
+        <button data-answer="wrong">Moved to nohup.out.</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation">The shell's parent is the tmux server on the remote machine, which never received a hang-up. Only the viewer (your SSH session) went away.</div>
+    </div>
+
+    <div class="quiz" data-quiz>
+      <div class="quiz-label">Quiz 4</div>
+      <p class="quiz-question">What does <code>ssh -L 5433:localhost:5432 vm</code> let you do?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">Connect a local client to localhost:5433 and reach the database listening on vm's port 5432.</button>
+        <button data-answer="wrong">Open port 5433 on vm to the public internet.</button>
+        <button data-answer="wrong">Copy the database from vm to your laptop.</button>
+        <button data-answer="wrong">Log in to vm as the user "localhost".</button>
+      </div>
+      <p class="quiz-status" data-quiz-status></p>
+      <div class="quiz-explanation"><code>-L local_port:target_host:target_port</code>. The target address is resolved <em>on the server</em>, so <code>localhost</code> there means the server itself. Nothing new is exposed publicly.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sandbox task — 10 minutes</h2>
+    <p>No real server needed: practise tmux in WSL. For SSH, use only a VM you own, or skip it for now.</p>
+    <ol class="steps">
+      <li><strong>Session survives.</strong> <code>tmux new -s play</code>, run <code>top</code>, press <code>&lt;C-b&gt; d</code>. Run <code>tmux ls</code>. Close the whole terminal window, open a new one, and run <code>tmux a -t play</code>. Is <code>top</code> still running?</li>
+      <li><strong>Panes.</strong> Inside tmux: <code>&lt;C-b&gt; %</code>, <code>&lt;C-b&gt; "</code>, move with <code>&lt;C-b&gt; &lt;arrow&gt;</code>, zoom with <code>&lt;C-b&gt; z</code>.</li>
+      <li><strong>Windows.</strong> <code>&lt;C-b&gt; c</code> twice, rename one with <code>&lt;C-b&gt; ,</code>, switch with <code>&lt;C-b&gt; 0</code>/<code>1</code>/<code>2</code> and <code>&lt;C-b&gt; w</code>.</li>
+      <li><strong>Keys (read-only check).</strong> <code>ls -l ~/.ssh/</code>. Do you already have an <code>id_ed25519</code>/<code>.pub</code> pair (for example, from GitHub)? Don't print the private key.</li>
+      <li><strong>Clean up.</strong> <code>tmux kill-session -t play</code>.</li>
+    </ol>
+    <p class="caption">Stretch (official exercise, needs your own Linux VM): add a <code>Host vm</code> entry with <code>LocalForward 9999 localhost:8888</code>, run <code>python3 -m http.server 8888</code> on the VM, and open <code>http://localhost:9999</code> on your machine.</p>
+  </section>
+
+  <section>
+    <h2>Retrieval practice</h2>
+    <div class="retrieval">
+      <p><strong>In your own words:</strong> explain to a teammate why running a long command over SSH inside tmux is safer than running it with <code>&amp;</code>. Use the words <em>SIGHUP</em>, <em>parent</em>, <em>detach</em> and <em>reattach</em>.</p>
+      <details>
+        <summary>Model answer (after you have tried)</summary>
+        <p>With <code>&amp;</code>, the job's <strong>parent</strong> is the shell that belongs to your SSH session. When the connection drops, that shell gets <strong>SIGHUP</strong> and passes it on, so the job dies. Inside tmux, the shell's parent is the tmux server, which isn't tied to your connection. You can <strong>detach</strong> on purpose or lose the network, and the job keeps running. Later you <strong>reattach</strong> and see its live output and scrollback, which <code>nohup</code> can't give you.</p>
+      </details>
+    </div>
+  </section>
+
+  <footer>
+    Lesson 0004 · <a href="0003-signals-and-job-control.html">← 0003</a> · <a href="0005-dotfiles-and-shell-customization.html">0005 →</a> · <a href="../index.html">Course map</a> · Sources: <a href="https://missing.csail.mit.edu/2026/command-line-environment/">MIT Missing Semester 2026</a> · CC BY-NC-SA
+  </footer>
+
+</div>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>
