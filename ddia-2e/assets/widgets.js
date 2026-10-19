@@ -11,6 +11,8 @@
  *           <div class="widget" data-widget="fanout"></div>
  *           <div class="widget" data-widget="queueing"></div>
  *           <div class="widget" data-widget="provisioning"></div>
+ *           <div class="widget" data-widget="n-plus-one"></div>
+ *           <div class="widget" data-widget="event-sourcing"></div>
  */
 (function () {
   "use strict";
@@ -325,7 +327,124 @@
     draw();
   }
 
-  const WIDGETS = { percentiles, "tail-amplification": tailAmplification, fanout, queueing, provisioning };
+  /* ---------------- N+1 queries (Ch.3 ORM pitfall) ----------------
+   * Toy cost: each DB round trip costs RTT; a join adds a little server work. Illustration only. */
+  function nPlusOne(root) {
+    root.innerHTML = `
+      <div class="w-title">The N+1 query problem</div>
+      <div class="w-sub">Show N comments with each author's name. Naive ORM code: 1 query for the comments, then 1 query <i>per comment</i> for its author.</div>
+      <label>Comments on the page (N): <b data-k="nv"></b></label>
+      <input type="range" min="1" max="500" value="50" data-k="n">
+      <label>Round trip to the database: <b data-k="rv"></b> ms</label>
+      <input type="range" min="0.2" max="20" step="0.2" value="1" data-k="r">
+      <div class="row" style="margin-top:.6em">
+        <span class="stat" style="border-left:4px solid var(--bad)">Lazy ORM<b data-k="a"></b><span data-k="aq" class="muted"></span></span>
+        <span class="stat" style="border-left:4px solid var(--good)">JOIN / eager load<b data-k="b"></b><span data-k="bq" class="muted"></span></span>
+      </div>
+      <p class="readout" data-k="msg"></p>`;
+    const n = $('[data-k="n"]', root), r = $('[data-k="r"]', root);
+    const draw = () => {
+      const N = Number(n.value), R = Number(r.value);
+      const lazy = (N + 1) * (R + 0.1), join = R + 0.1 + N * 0.005;
+      $('[data-k="nv"]', root).textContent = N;
+      $('[data-k="rv"]', root).textContent = R;
+      $('[data-k="a"]', root).textContent = lazy.toFixed(0) + " ms";
+      $('[data-k="aq"]', root).textContent = `${N + 1} queries`;
+      $('[data-k="b"]', root).textContent = join.toFixed(1) + " ms";
+      $('[data-k="bq"]', root).textContent = "1 query";
+      $('[data-k="msg"]', root).innerHTML = `About <b>${Math.max(1, Math.round(lazy / join))}×</b> slower. Cost grows with N × round-trip time. ` +
+        (R >= 5 ? "With a remote (e.g. cross-region) database it gets painful fast." : "Try raising the round-trip time to a remote database.") +
+        " Fix: write the join, or tell the ORM to eager-load authors.";
+    };
+    n.addEventListener("input", draw); r.addEventListener("input", draw);
+    draw();
+  }
+
+  /* ---------------- Event sourcing + CQRS (Ch.3, book Fig. 3-8 idea) ----------------
+   * Append immutable events; two read models are derived by replaying the log in order. */
+  function eventSourcing(root) {
+    const CAP0 = 5;
+    const KINDS = {
+      book: (e) => `SeatBooked { ${e.who} }`,
+      cancel: (e) => `BookingCancelled { ${e.who} }`,
+      room: (e) => `CapacityChanged { ${e.cap} seats }`,
+    };
+    const NAMES = ["Ana", "Budi", "Citra", "Dewi", "Eko", "Fajar", "Gita", "Hadi"];
+    let log = [], bugged = false;
+    root.innerHTML = `
+      <div class="w-title">Event log → materialized views</div>
+      <div class="w-sub">A workshop with ${CAP0} seats. Every command that passes validation becomes an immutable, past-tense event. Two read models are derived from the log.</div>
+      <div class="row">
+        <button class="btn" data-k="book">+ Book a seat</button>
+        <button class="btn" data-k="cancel">✕ Cancel oldest booking</button>
+        <button class="btn" data-k="room">🏛 Move to bigger room (8)</button>
+      </div>
+      <div class="row" style="margin-top:.5em">
+        <button class="btn" data-k="bug">🐞 View code has a bug</button>
+        <button class="btn" data-k="rebuild">↻ Delete views &amp; replay log</button>
+        <button class="btn" data-k="reset">Reset</button>
+      </div>
+      <div class="grid" style="margin:.8em 0 0">
+        <div><b style="font-size:.85rem">Event log (append-only)</b><ol data-k="log" style="font-family:var(--mono);font-size:.75rem;margin:.3em 0;padding-left:1.6em;max-height:190px;overflow:auto"></ol></div>
+        <div><b style="font-size:.85rem">View 1 · seats dashboard</b><div data-k="v1" style="font-size:.9rem;margin-top:.3em"></div>
+             <b style="font-size:.85rem;display:block;margin-top:.6em">View 2 · badge print list</b><div data-k="v2" style="font-size:.9rem;margin-top:.3em"></div></div>
+      </div>
+      <p class="readout" data-k="msg"></p>`;
+    const project = (events, buggy) => {
+      let cap = CAP0; const holders = [];
+      for (const e of events) {
+        if (e.t === "book") holders.push(e.who);
+        if (e.t === "cancel" && !buggy && holders.includes(e.who)) holders.splice(holders.indexOf(e.who), 1);
+        if (e.t === "room") cap = e.cap;
+      }
+      return { cap, holders };
+    };
+    let view = project([], false), msg = "Click buttons to send commands.";
+    const truth = () => project(log, false); // used to validate commands
+    const render = () => {
+      $('[data-k="log"]', root).innerHTML = log.length
+        ? log.map((e) => `<li>${KINDS[e.t](e)}</li>`).join("") : '<li class="muted" style="list-style:none">(empty)</li>';
+      $('[data-k="v1"]', root).innerHTML = `<b>${view.cap - view.holders.length}</b> of ${view.cap} seats free`;
+      $('[data-k="v2"]', root).textContent = view.holders.length ? view.holders.join(", ") : "—";
+      $('[data-k="msg"]', root).innerHTML = msg;
+      $('[data-k="bug"]', root).classList.toggle("on", bugged);
+    };
+    const append = (e) => { log.push(e); view = project(log, bugged); };
+    $('[data-k="book"]', root).addEventListener("click", () => {
+      const s = truth();
+      if (s.holders.length >= s.cap) { msg = "Command <b>rejected</b>: no seats left. Invalid commands never become events."; return render(); }
+      const who = NAMES[log.filter((e) => e.t === "book").length % NAMES.length];
+      append({ t: "book", who }); msg = "Command valid → event <b>SeatBooked</b> appended; both views updated."; render();
+    });
+    $('[data-k="cancel"]', root).addEventListener("click", () => {
+      const s = truth();
+      if (!s.holders.length) { msg = "Command <b>rejected</b>: nothing to cancel."; return render(); }
+      append({ t: "cancel", who: s.holders[0] });
+      msg = "The booking isn't erased: a <b>new</b> event records the cancellation. History stays intact (audit log)."; render();
+    });
+    $('[data-k="room"]', root).addEventListener("click", () => {
+      append({ t: "room", cap: 8 }); msg = "Capacity change is just another event."; render();
+    });
+    $('[data-k="bug"]', root).addEventListener("click", () => {
+      bugged = !bugged;
+      msg = bugged ? "View code now ignores cancellations. Cancel a booking and watch the views go wrong…"
+                   : "Bug fixed in code, but the existing views are still wrong. Replay the log to rebuild them.";
+      render();
+    });
+    $('[data-k="rebuild"]', root).addEventListener("click", () => {
+      view = project(log, bugged);
+      msg = bugged ? "Replayed with the buggy code: same wrong result. Fix the bug first."
+                   : `Views deleted and rebuilt from ${log.length} events, in order, with fixed code. Correct again — no data lost.`;
+      render();
+    });
+    $('[data-k="reset"]', root).addEventListener("click", () => {
+      log = []; bugged = false; view = project([], false); msg = "Click buttons to send commands."; render();
+    });
+    render();
+  }
+
+  const WIDGETS = { percentiles, "tail-amplification": tailAmplification, fanout, queueing, provisioning,
+                    "n-plus-one": nPlusOne, "event-sourcing": eventSourcing };
 
   document.addEventListener("DOMContentLoaded", () => {
     initQuizzes();

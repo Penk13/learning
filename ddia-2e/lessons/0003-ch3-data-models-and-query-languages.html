@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DDIA Ch.3 · Data Models &amp; Query Languages</title>
+<link rel="stylesheet" href="../assets/course.css">
+<script src="../assets/widgets.js" defer></script>
+</head>
+<body>
+<main>
+
+<div class="kicker">DDIA 2nd ed. · Part I · Chapter 3 · Lesson 0003</div>
+<h1>Data Models and Query Languages</h1>
+<p class="lede">Tables, documents, graphs, event logs, DataFrames. Each one makes some data easy to express and other data awkward. The data model you pick shapes how you think about the problem.</p>
+<div class="meta">
+  <span>⏱ ~30 min</span>
+  <span>📖 Book pp. 65–108 (2nd ed.)</span>
+  <span>🧰 <a href="../reference/glossary.html">Glossary</a> · <a href="../reference/ch3-cheatsheet.html">Ch.3 cheat sheet</a></span>
+</div>
+
+<div class="toc no-print">
+  <b>Your one win for today:</b> given a dataset, you can tell whether its relationships are mostly <i>one-to-many</i> (documents fit), <i>many-to-many</i> (relational or graph), or <i>a history of changes</i> (event sourcing). You can also say what normalizing or denormalizing it costs.
+  <ol>
+    <li><a href="#layers">Layers of data models</a></li>
+    <li><a href="#reldoc">Relational vs document</a></li>
+    <li><a href="#norm">Normalization &amp; denormalization</a></li>
+    <li><a href="#m2m">Many-to-one &amp; many-to-many</a></li>
+    <li><a href="#star">Stars &amp; snowflakes (analytics)</a></li>
+    <li><a href="#which">When to use which</a></li>
+    <li><a href="#graph">Graph models &amp; their query languages</a></li>
+    <li><a href="#es">Event sourcing &amp; CQRS</a></li>
+    <li><a href="#df">DataFrames, matrices, arrays</a></li>
+    <li><a href="#practice">Practice (no peeking)</a></li>
+  </ol>
+</div>
+
+<!-- ====================================================== -->
+<h2 id="layers">1 · Data models are stacked layers</h2>
+
+<p>Each layer represents its data using the layer below it, and hides that complexity from the layer above. This chapter covers layer 2. Chapter 4 covers layer 3.</p>
+
+<figure>
+<svg viewBox="0 0 640 230" role="img" aria-label="Four stacked layers: application objects, general-purpose data model, bytes on disk or network, electrical signals. This chapter covers the second layer.">
+  <rect x="60" y="10" width="420" height="44" rx="8" class="box"/>
+  <text x="270" y="30" text-anchor="middle" font-size="14" font-weight="700">① App objects &amp; APIs</text>
+  <text x="270" y="46" text-anchor="middle" font-size="11" class="muted-t">Student, Course, Enrollment… specific to your app</text>
+  <rect x="60" y="64" width="420" height="44" rx="8" fill="var(--accent)" opacity=".9"/>
+  <text x="270" y="84" text-anchor="middle" font-size="14" font-weight="700" class="white">② General-purpose data model</text>
+  <text x="270" y="100" text-anchor="middle" font-size="11" class="white">tables · JSON documents · graph · event log · DataFrame</text>
+  <rect x="60" y="118" width="420" height="44" rx="8" class="box"/>
+  <text x="270" y="138" text-anchor="middle" font-size="14" font-weight="700">③ Bytes in memory / disk / network</text>
+  <text x="270" y="154" text-anchor="middle" font-size="11" class="muted-t">storage engines (Ch.4)</text>
+  <rect x="60" y="172" width="420" height="44" rx="8" class="box"/>
+  <text x="270" y="192" text-anchor="middle" font-size="14" font-weight="700">④ Hardware</text>
+  <text x="270" y="208" text-anchor="middle" font-size="11" class="muted-t">currents, light pulses, magnetic fields</text>
+  <text x="500" y="92" font-size="13" font-weight="700" fill="var(--accent)">← this chapter</text>
+  <text x="500" y="146" font-size="12" class="muted-t">← Chapter 4</text>
+</svg>
+<figcaption>Each layer's clean model lets different teams, such as database vendors and app developers, work together without knowing each other's internals.</figcaption>
+</figure>
+
+<div class="callout tip"><b>Declarative query languages</b> (SQL, Cypher, SPARQL, Datalog) say <i>what</i> result you want: the conditions, sorting, grouping. They don't say <i>how</i> to get it. The <b>query optimizer</b> picks the indexes, join algorithms and order of execution. The database can therefore get faster, or run your query in parallel across cores and machines, without you changing a line. With Python or Java you write the algorithm yourself.</div>
+
+<!-- ====================================================== -->
+<h2 id="reldoc">2 · Relational vs document</h2>
+
+<p>The <b>relational model</b> (Codd, 1970) stores data as <b>relations</b> (SQL: tables), each an unordered collection of <b>tuples</b> (rows). By the mid-1980s it was the default choice, and it still dominates business analytics. Challengers came and went: the network and hierarchical models, object databases, XML databases. <b>NoSQL</b> in the 2010s brought new data models, flexible schemas, scaling and open source. <b>NewSQL</b> aimed for NoSQL-style scale while keeping relational transactions. The buzzwords faded, but one lasting effect remains: the <b>document model</b> (usually JSON), which most relational databases now also support.</p>
+
+<h3>The object-relational mismatch</h3>
+<p>App code uses objects. A relational database uses tables, rows and columns. The awkward translation between the two is called the <b>impedance mismatch</b>, a term borrowed from electronics. <b>ORMs</b> (ActiveRecord, Hibernate, also Django ORM and Entity Framework) remove the boilerplate, but they have catches:</p>
+
+<div class="grid">
+  <div class="card"><h4>👎 ORM downsides</h4><p>They can't hide both models fully, so you still think in both. Analysts still query the underlying tables, so schema design still matters. Mostly OLTP + relational only. Auto-generated schemas can be awkward or inefficient. Easy to write slow queries by accident, e.g. <b>N+1</b>.</p></div>
+  <div class="card"><h4>👍 ORM upsides</h4><p>Some translation is unavoidable for relational data, so less boilerplate is a win for simple, repetitive cases. Some ORMs cache query results. Many also manage <b>schema migrations</b>.</p></div>
+</div>
+
+<div class="widget" data-widget="n-plus-one"></div>
+
+<h3>One-to-many data is a tree, and documents fit trees</h3>
+<p>The book's example is a résumé (LinkedIn profile). One user has many positions, many education entries and contact info. Relational: split them into separate tables with foreign keys to <code>users</code>. Document: one JSON object with nested arrays.</p>
+
+<figure>
+<svg viewBox="0 0 640 250" role="img" aria-label="Left: a relational schema with a users table and separate positions, education and contact tables each holding a user_id foreign key. Right: one JSON document with nested positions and education arrays, forming a tree.">
+  <text x="150" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="var(--rel)">Relational · shredded into tables</text>
+  <rect x="95" y="30" width="110" height="46" rx="6" fill="var(--rel)" opacity=".85"/>
+  <text x="150" y="50" text-anchor="middle" font-size="12" font-weight="700" class="white">users</text>
+  <text x="150" y="66" text-anchor="middle" font-size="10" class="white">user_id, name, region_id</text>
+  <g fill="var(--card-2)" stroke="var(--rule)">
+    <rect x="5" y="130" width="92" height="46" rx="6"/><rect x="104" y="130" width="92" height="46" rx="6"/><rect x="203" y="130" width="92" height="46" rx="6"/>
+  </g>
+  <text x="51" y="150" text-anchor="middle" font-size="11" font-weight="700">positions</text>
+  <text x="150" y="150" text-anchor="middle" font-size="11" font-weight="700">education</text>
+  <text x="249" y="150" text-anchor="middle" font-size="11" font-weight="700">contact_info</text>
+  <text x="51" y="166" text-anchor="middle" font-size="9" class="muted-t">user_id (FK)</text>
+  <text x="150" y="166" text-anchor="middle" font-size="9" class="muted-t">user_id (FK)</text>
+  <text x="249" y="166" text-anchor="middle" font-size="9" class="muted-t">user_id (FK)</text>
+  <path d="M51 130 L130 76 M150 130 V76 M249 130 L170 76" class="line"/>
+  <text x="150" y="206" text-anchor="middle" font-size="11" class="muted-t">fetch a profile = 4 queries</text>
+  <text x="150" y="222" text-anchor="middle" font-size="11" class="muted-t">or a messy multiway join</text>
+
+  <line x1="320" y1="10" x2="320" y2="240" stroke="var(--rule)"/>
+
+  <text x="480" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sca)">Document · one tree</text>
+  <rect x="425" y="30" width="110" height="40" rx="20" fill="var(--sca)" opacity=".85"/>
+  <text x="480" y="55" text-anchor="middle" font-size="12" font-weight="700" class="white">user 251</text>
+  <path d="M450 70 L380 110 M480 70 V110 M510 70 L580 110" class="line"/>
+  <rect x="340" y="110" width="80" height="30" rx="15" class="box"/><text x="380" y="130" text-anchor="middle" font-size="11">positions[]</text>
+  <rect x="440" y="110" width="80" height="30" rx="15" class="box"/><text x="480" y="130" text-anchor="middle" font-size="11">education[]</text>
+  <rect x="540" y="110" width="90" height="30" rx="15" class="box"/><text x="585" y="130" text-anchor="middle" font-size="11">contact_info</text>
+  <path d="M365 140 L355 165 M395 140 L405 165 M480 140 V165" class="line"/>
+  <rect x="330" y="165" width="50" height="22" rx="4" class="box2"/><text x="355" y="180" text-anchor="middle" font-size="9">job 1</text>
+  <rect x="385" y="165" width="50" height="22" rx="4" class="box2"/><text x="410" y="180" text-anchor="middle" font-size="9">job 2</text>
+  <rect x="455" y="165" width="50" height="22" rx="4" class="box2"/><text x="480" y="180" text-anchor="middle" font-size="9">school</text>
+  <text x="480" y="216" text-anchor="middle" font-size="11" class="muted-t">fetch a profile = 1 read</text>
+  <text x="480" y="232" text-anchor="middle" font-size="11" class="muted-t">(better locality)</text>
+</svg>
+<figcaption>Redrawn idea of the book's Figs. 3-1 and 3-2. One-to-many is often <b>one-to-few</b>. With thousands of children, such as comments on a celebrity's post, embedding them all gets unwieldy and separate tables win again.</figcaption>
+</figure>
+
+<!-- ====================================================== -->
+<h2 id="norm">3 · Normalization, denormalization, joins</h2>
+
+<p>Why does the profile store <code>region_id: "us:91"</code> and not the text "Washington, DC"? A standardized list gives you consistent spelling, no ambiguity between places with the same name, a single place to update a renamed city, localization into other languages, and smarter search (it knows DC is on the East Coast).</p>
+
+<figure>
+<svg viewBox="0 0 640 170" role="img" aria-label="Normalized: many profiles hold region_id 91 pointing to one regions row containing Washington DC. Denormalized: each profile holds its own copy of the text Washington DC.">
+  <text x="150" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="var(--good)">Normalized · store an ID</text>
+  <g fill="var(--card-2)" stroke="var(--rule)">
+    <rect x="10" y="30" width="110" height="26" rx="5"/><rect x="10" y="64" width="110" height="26" rx="5"/><rect x="10" y="98" width="110" height="26" rx="5"/>
+  </g>
+  <text x="65" y="48" text-anchor="middle" font-size="11">profile · region 91</text>
+  <text x="65" y="82" text-anchor="middle" font-size="11">profile · region 91</text>
+  <text x="65" y="116" text-anchor="middle" font-size="11">profile · region 91</text>
+  <path d="M120 43 L190 70 M120 77 H190 M120 111 L190 84" class="line"/>
+  <rect x="192" y="60" width="110" height="34" rx="6" fill="var(--good)" opacity=".85"/>
+  <text x="247" y="81" text-anchor="middle" font-size="11" class="white">91 = "Washington, DC"</text>
+  <text x="150" y="150" text-anchor="middle" font-size="11" class="muted-t">1 copy → cheap writes · reads need a join</text>
+
+  <line x1="320" y1="10" x2="320" y2="160" stroke="var(--rule)"/>
+
+  <text x="480" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sca)">Denormalized · copy the text</text>
+  <g fill="var(--card-2)" stroke="var(--rule)">
+    <rect x="370" y="30" width="220" height="26" rx="5"/><rect x="370" y="64" width="220" height="26" rx="5"/><rect x="370" y="98" width="220" height="26" rx="5"/>
+  </g>
+  <text x="480" y="48" text-anchor="middle" font-size="11">profile · "Washington, DC"</text>
+  <text x="480" y="82" text-anchor="middle" font-size="11">profile · "Washington, DC"</text>
+  <text x="480" y="116" text-anchor="middle" font-size="11">profile · "Washington DC" ⚠</text>
+  <text x="480" y="150" text-anchor="middle" font-size="11" class="muted-t">no join on read · N copies to update (and drift)</text>
+</svg>
+<figcaption>An ID means nothing to humans, so it never has to change. Anything humans read may change one day, and every duplicated copy must change with it.</figcaption>
+</figure>
+
+<div class="table-wrap">
+<table class="compare">
+  <tr><th></th><th>Normalized</th><th>Denormalized</th></tr>
+  <tr><td><b>Writes</b></td><td>Faster: one copy</td><td>Slower: update every copy, more disk</td></tr>
+  <tr><td><b>Reads</b></td><td>Slower: needs joins</td><td>Faster: fewer joins</td></tr>
+  <tr><td><b>Risk</b></td><td>Join cost at very large scale</td><td>Copies drift apart. A crash halfway through an update needs <b>atomic transactions</b> across documents (not every DB has them) or stream processing (Ch.12)</td></tr>
+  <tr><td><b>Fits</b></td><td>OLTP; small-to-moderate scale (the usual default)</td><td>Analytics (bulk updates, read-heavy); hot read paths at huge scale</td></tr>
+</table>
+</div>
+
+<p class="big-idea">Think of denormalized data as <b>derived data</b> (Ch.1): you need a process that keeps the redundant copies up to date.</p>
+
+<h3>Back to the timelines from Ch.2</h3>
+<p>The materialized home timeline is a denormalized cache of a join. But X's timeline stores only <b>IDs</b> (post ID, sender ID), not the post text or like counts. At read time the service <b>hydrates</b> those IDs by looking up the post content and the sender's profile, which is effectively a join in application code. Why? Like counts change many times per second and people change their profile photos. Copying that into millions of timelines would be wrong and expensive.</p>
+
+<div class="callout tip"><b>The lesson:</b> joins at read time don't stop you from scaling. Hydration parallelizes well, and its cost doesn't depend on follower counts. The best design often <i>mixes</i> the two: denormalize what rarely changes and is costly to compute, and keep fast-changing data normalized.</div>
+
+<details class="recall"><summary>🧠 Pause &amp; recall: a course-registration page shows each class's lecturer name and the live "seats left" count. Which would you denormalize into the class listing, and which would you keep as an ID?</summary>
+Lecturer name changes rarely, so copying it is cheap and safe (as long as a process keeps it updated). Seats-left changes constantly during registration, so keep it normalized (or look it up live). Copying it would go stale immediately, just like X's like counts.</details>
+
+<!-- ====================================================== -->
+<h2 id="m2m">4 · Many-to-one and many-to-many</h2>
+
+<div class="grid">
+  <div class="card"><h4>One-to-many</h4><p>One résumé → several positions; each position belongs to one résumé. A tree, so it fits documents.</p></div>
+  <div class="card"><h4>Many-to-one</h4><p>Many people → one region. A reference, so it fits normalization.</p></div>
+  <div class="card"><h4>Many-to-many</h4><p>A person worked at many orgs; an org has many employees. Needs a <b>join (associative) table</b>.</p></div>
+</div>
+
+<figure>
+<svg viewBox="0 0 640 170" role="img" aria-label="Many-to-many: users table and organizations table connected through a positions join table, where each row links one user_id to one org_id. Indexes on both columns allow querying in both directions.">
+  <rect x="10" y="50" width="150" height="70" rx="8" fill="var(--rel)" opacity=".85"/>
+  <text x="85" y="78" text-anchor="middle" font-size="13" font-weight="700" class="white">users</text>
+  <text x="85" y="98" text-anchor="middle" font-size="11" class="white">251 · 252 · 253</text>
+  <rect x="245" y="30" width="150" height="110" rx="8" class="box"/>
+  <text x="320" y="52" text-anchor="middle" font-size="13" font-weight="700">positions</text>
+  <text x="320" y="70" text-anchor="middle" font-size="10" class="muted-t">user_id · org_id · job_title</text>
+  <text x="320" y="90" text-anchor="middle" font-size="11" font-family="var(--mono)">251 · 513 · President</text>
+  <text x="320" y="106" text-anchor="middle" font-size="11" font-family="var(--mono)">251 · 514 · Senator</text>
+  <text x="320" y="122" text-anchor="middle" font-size="11" font-family="var(--mono)">252 · 513 · Advisor</text>
+  <rect x="480" y="50" width="150" height="70" rx="8" fill="var(--rel)" opacity=".85"/>
+  <text x="555" y="78" text-anchor="middle" font-size="13" font-weight="700" class="white">organizations</text>
+  <text x="555" y="98" text-anchor="middle" font-size="11" class="white">513 · 514</text>
+  <path d="M160 85 H243" class="line"/><path d="M397 85 H478" class="line"/>
+  <text x="200" y="160" text-anchor="middle" font-size="11" class="muted-t">index user_id →</text>
+  <text x="440" y="160" text-anchor="middle" font-size="11" class="muted-t">← index org_id</text>
+</svg>
+<figcaption>Book's Fig. 3-3 idea. One row per relationship, stored <b>once</b>. Secondary indexes (Ch.4) on both columns answer "where did this person work?" and "who worked here?" efficiently.</figcaption>
+</figure>
+
+<p>In a document model, the person document can hold <code>org_id</code> references inside its <code>positions</code> array. Many document DBs (and relational DBs with JSON) can index values inside documents. Storing the IDs on <i>both</i> sides (the person lists orgs, the org lists people) is denormalized, and the two lists can disagree.</p>
+
+<!-- ====================================================== -->
+<h2 id="star">5 · Stars and snowflakes: schemas for analytics</h2>
+
+<p>Data warehouses are usually relational and follow conventions built for analysts. ETL moves operational data into them.</p>
+
+<figure>
+<svg viewBox="0 0 640 260" role="img" aria-label="Star schema: a central fact_sales table surrounded by dimension tables for date, product, store, customer and promotion. A snowflake schema further splits the product dimension into brand and category sub-dimensions.">
+  <rect x="245" y="100" width="150" height="64" rx="8" fill="var(--accent)" opacity=".9"/>
+  <text x="320" y="124" text-anchor="middle" font-size="14" font-weight="700" class="white">fact_sales</text>
+  <text x="320" y="142" text-anchor="middle" font-size="10" class="white">one row per event · price, cost</text>
+  <text x="320" y="156" text-anchor="middle" font-size="10" class="white">+ FKs to dimensions</text>
+  <g fill="var(--card-2)" stroke="var(--rule)">
+    <rect x="40" y="20" width="130" height="40" rx="6"/><rect x="255" y="10" width="130" height="40" rx="6"/><rect x="470" y="20" width="130" height="40" rx="6"/>
+    <rect x="40" y="200" width="130" height="40" rx="6"/><rect x="470" y="200" width="130" height="40" rx="6"/>
+  </g>
+  <text x="105" y="45" text-anchor="middle" font-size="12">dim_date <tspan class="muted-t" font-size="10">(holiday?)</tspan></text>
+  <text x="320" y="35" text-anchor="middle" font-size="12">dim_product</text>
+  <text x="535" y="45" text-anchor="middle" font-size="12">dim_store</text>
+  <text x="105" y="225" text-anchor="middle" font-size="12">dim_customer</text>
+  <text x="535" y="225" text-anchor="middle" font-size="12">dim_promotion</text>
+  <path d="M170 50 L245 105 M320 50 V100 M470 50 L395 105 M170 210 L245 160 M470 210 L395 160" class="line"/>
+  <g stroke="var(--mai)" stroke-dasharray="4 3" fill="none" stroke-width="1.5">
+    <rect x="410" y="72" width="70" height="22" rx="4"/><rect x="160" y="72" width="80" height="22" rx="4"/>
+  </g>
+  <text x="445" y="87" text-anchor="middle" font-size="10" fill="var(--mai)">dim_brand</text>
+  <text x="200" y="87" text-anchor="middle" font-size="10" fill="var(--mai)">dim_category</text>
+  <path d="M385 40 L425 72 M255 40 L215 72" stroke="var(--mai)" stroke-dasharray="4 3" fill="none"/>
+  <text x="320" y="255" text-anchor="middle" font-size="11" class="muted-t">dashed = snowflake: dimensions split into sub-dimensions</text>
+</svg>
+<figcaption>Book's Fig. 3-5 idea (a grocery retailer). Dimensions are the who, what, where, when, how and why of each event. Even the date is a dimension, so you can mark public holidays.</figcaption>
+</figure>
+
+<div class="grid">
+  <div class="card"><h4>⭐ Star</h4><p>Fact table in the middle, dimension tables around it. Mostly many-to-one. <b>Simpler for analysts</b>, so usually preferred.</p></div>
+  <div class="card"><h4>❄ Snowflake</h4><p>Dimensions split into sub-dimensions (brand, category). <b>More normalized</b>, more joins.</p></div>
+  <div class="card"><h4>📏 One big table (OBT)</h4><p>Fold the dimensions into the fact table, i.e. pre-join it. More storage, sometimes faster queries.</p></div>
+</div>
+<p>Tables are <b>wide</b>: often 100+ columns. Fact tables can grow to petabytes. Denormalizing is fine here because the data is a log of history that rarely changes.</p>
+
+<!-- ====================================================== -->
+<h2 id="which">6 · When to use which model</h2>
+
+<div class="table-wrap">
+<table class="compare">
+  <tr><th></th><th>📄 Document</th><th>🗃 Relational</th></tr>
+  <tr><td><b>Best for</b></td><td>Trees of one-to-many, loaded whole (a profile, an order with its items)</td><td>Many-to-one and many-to-many; data that's joined and queried many ways</td></tr>
+  <tr><td><b>Strengths</b></td><td>Schema flexibility · locality · closer to app objects · easy ordered lists (JSON array)</td><td>Joins · refer to any row directly by ID · enforced schema</td></tr>
+  <tr><td><b>Weak spots</b></td><td>Can't point at a nested item directly ("2nd position of user 251") · whole doc loaded and rewritten</td><td><b>Shredding</b> a tree into many tables · reorderable lists need tricks (renumbering, linked list, fractional indexing)</td></tr>
+</table>
+</div>
+
+<h3>Schema-on-read vs schema-on-write</h3>
+<p>"Schemaless" is misleading. The reading code still assumes a structure. It's just <i>implicit</i>.</p>
+
+<div class="grid">
+  <div class="card sca"><h4 class="c-sca">Schema-on-read</h4><p>Structure interpreted when read. Like <b>dynamic</b> typing. Document DBs, JSON columns.</p>
+<pre><code>if (user &amp;&amp; user.name &amp;&amp; !user.first_name) {
+  // old docs lack first_name
+  user.first_name = user.name.split(" ")[0];
+}</code></pre>
+<p>Every reader must handle old formats forever.</p></div>
+  <div class="card rel"><h4 class="c-rel">Schema-on-write</h4><p>DB enforces structure on every write. Like <b>static</b> typing. Relational tables.</p>
+<pre><code>ALTER TABLE users
+  ADD COLUMN first_name text DEFAULT NULL;
+UPDATE users
+  SET first_name = split_part(name, ' ', 1);</code></pre>
+<p>ADD COLUMN is fast. The UPDATE rewrites every row, which is slow on big tables. Online migration tools exist, but it's still hard to operate.</p></div>
+</div>
+
+<div class="callout tip">Schema-on-read wins when data is <b>heterogeneous</b>: many object types that don't merit a table each, or structure dictated by external systems that change anytime. When all records share a structure, a schema documents and enforces it. Debate: no clear winner, just like static vs dynamic typing. More on schema evolution in Ch.5.</div>
+
+<h3>Locality and query languages</h3>
+<ul>
+  <li>A document is stored as one contiguous string (JSON, XML, BSON). That's great if you need most of it at once. It's wasteful if you need a small part, and an update rewrites the whole document. <b>Keep documents small</b> and avoid frequent small updates.</li>
+  <li>Locality isn't document-only: Spanner's <b>interleaved</b> tables, Oracle's multi-table index clusters, and Bigtable/HBase <b>column families</b> do the same.</li>
+  <li>Document query languages vary: key-value only, secondary indexes, or rich languages (XQuery/XPath, JSONPath, MongoDB's <b>aggregation pipeline</b>).</li>
+</ul>
+
+<div class="grid">
+<div>
+<div class="code-label">SQL · sharks per month</div>
+<pre><code>SELECT date_trunc('month', observation_timestamp)
+         AS observation_month,
+       sum(num_animals) AS total_animals
+FROM observations
+WHERE family = 'Sharks'
+GROUP BY observation_month;</code></pre>
+</div>
+<div>
+<div class="code-label">MongoDB aggregation pipeline</div>
+<pre><code>db.observations.aggregate([
+  { $match: { family: "Sharks" } },
+  { $group: {
+      _id: { year:  { $year:  "$observationTimestamp" },
+             month: { $month: "$observationTimestamp" } },
+      totalAnimals: { $sum: "$numAnimals" } } }
+]);</code></pre>
+</div>
+</div>
+<p class="muted">Same expressiveness, different syntax: SQL reads like English sentences, the pipeline like JSON. Mostly a matter of taste.</p>
+
+<p class="big-idea"><b>The models are converging.</b> Relational DBs added JSON types, operators and indexes inside documents. Document DBs (MongoDB, Couchbase, RethinkDB) added joins, secondary indexes and declarative queries. Hybrids are powerful. Codd's 1970 paper even allowed nested relations ("nonsimple domains").</p>
+
+<!-- ====================================================== -->
+<h2 id="graph">7 · Graph-like data models</h2>
+
+<p>Mostly one-to-many: use documents. Some many-to-many: relational handles it. <b>Anything potentially related to everything</b>: use a graph. A graph has <b>vertices</b> (nodes, entities) and <b>edges</b> (relationships, arcs). Examples: social graphs, the web graph (PageRank), road and rail networks (shortest path). A graph can also hold <i>many different kinds</i> of things in one store, like Facebook's single graph of people, places, events and comments, or a search engine's <b>knowledge graph</b>.</p>
+
+<figure>
+<svg viewBox="0 0 640 250" role="img" aria-label="Property graph example: Lucy was born in Idaho, which is within the United States, within North America. Lucy and Alain are married and live in London, which is within the United Kingdom, within Europe. Alain was born in Saint-Lô, within France, within Europe.">
+  <defs><marker id="g1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>
+  <g font-size="11">
+    <rect x="10" y="10" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="65" y="29" text-anchor="middle" class="white">North America</text>
+    <rect x="10" y="80" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="65" y="99" text-anchor="middle" class="white">United States</text>
+    <rect x="10" y="150" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="65" y="169" text-anchor="middle" class="white">Idaho <tspan font-size="9">(state)</tspan></text>
+    <rect x="265" y="10" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="320" y="29" text-anchor="middle" class="white">Europe</text>
+    <rect x="200" y="80" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="255" y="99" text-anchor="middle" class="white">United Kingdom</text>
+    <rect x="200" y="150" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="255" y="169" text-anchor="middle" class="white">London <tspan font-size="9">(city)</tspan></text>
+    <rect x="490" y="80" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="545" y="99" text-anchor="middle" class="white">France</text>
+    <rect x="490" y="150" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="545" y="169" text-anchor="middle" class="white">Saint-Lô</text>
+    <rect x="80" y="212" width="90" height="30" rx="6" fill="var(--accent)"/><text x="125" y="232" text-anchor="middle" class="white" font-weight="700">👤 Lucy</text>
+    <rect x="420" y="212" width="90" height="30" rx="6" fill="var(--accent)"/><text x="465" y="232" text-anchor="middle" class="white" font-weight="700">👤 Alain</text>
+  </g>
+  <g class="line" marker-end="url(#g1)">
+    <path d="M65 80 V40"/><path d="M65 150 V110"/>
+    <path d="M255 80 L305 40"/><path d="M255 150 V110"/>
+    <path d="M545 80 L380 30"/><path d="M545 150 V110"/>
+    <path d="M110 212 L80 180"/>
+    <path d="M150 212 L215 180"/>
+    <path d="M440 212 L300 180"/>
+    <path d="M490 212 L530 180"/>
+    <path d="M170 236 H418"/>
+  </g>
+  <g font-size="9" class="muted-t">
+    <text x="70" y="62">WITHIN</text><text x="70" y="132">WITHIN</text>
+    <text x="285" y="62">WITHIN</text><text x="260" y="132">WITHIN</text>
+    <text x="440" y="50">WITHIN</text><text x="550" y="132">WITHIN</text>
+    <text x="40" y="200">BORN_IN</text><text x="180" y="200">LIVES_IN</text>
+    <text x="330" y="200">LIVES_IN</text><text x="520" y="200">BORN_IN</text>
+    <text x="294" y="231" text-anchor="middle">MARRIED</text>
+  </g>
+</svg>
+<figcaption>Simplified from the book's Fig. 3-6. Notice what's awkward for a fixed relational schema: different region structures per country, varying granularity (born in a <i>state</i>, lives in a <i>city</i>), and easy extension (add allergen vertices later). <b>Graphs are good for evolvability.</b></figcaption>
+</figure>
+
+<h3>Property graph (Neo4j, Memgraph, KùzuDB…)</h3>
+<div class="grid">
+  <div class="card"><h4>Vertex</h4><p>ID · label (type) · outgoing edges · incoming edges · properties (key-value).</p></div>
+  <div class="card"><h4>Edge</h4><p>ID · <b>tail</b> vertex (start) · <b>head</b> vertex (end) · label (relationship kind) · properties.</p></div>
+</div>
+<p>You can store it as two relational tables, <code>vertices</code> and <code>edges</code>, with indexes on <code>tail_vertex</code> and <code>head_vertex</code> so you can traverse both ways. The edges table is a <b>generalized join table</b>. Any vertex can link to any other, and labels keep many kinds of data in one clean graph. Limitation: an edge connects only <i>two</i> vertices. Three-way relationships need an extra vertex or a hypergraph.</p>
+
+<h3>Four lines vs 31 lines</h3>
+<p>Query: <i>find people who emigrated from the US to Europe.</i> The hard part is that a person's BORN_IN edge may point at a city, a state or a country. You must follow <b>WITHIN</b> edges a <i>variable</i> number of times.</p>
+
+<div class="grid">
+<div>
+<div class="code-label">Cypher (graph) · 4 lines</div>
+<pre><code>MATCH
+ (person) -[:BORN_IN]-&gt; () -[:WITHIN*0..]-&gt; (:Location {name:'United States'}),
+ (person) -[:LIVES_IN]-&gt; () -[:WITHIN*0..]-&gt; (:Location {name:'Europe'})
+RETURN person.name</code></pre>
+<p class="muted" style="font-size:.85rem"><code>*0..</code> = "follow WITHIN zero or more times", like <code>*</code> in a regex.</p>
+</div>
+<div>
+<div class="code-label">SQL · recursive CTE (excerpt of 31 lines)</div>
+<pre><code>WITH RECURSIVE
+  in_usa(vertex_id) AS (
+    SELECT vertex_id FROM vertices
+      WHERE label = 'Location'
+        AND properties-&gt;&gt;'name' = 'United States'
+    UNION
+    SELECT edges.tail_vertex FROM edges
+      JOIN in_usa ON edges.head_vertex = in_usa.vertex_id
+      WHERE edges.label = 'within'
+  ),
+  in_europe(...) AS (...),
+  born_in_usa(...) AS (...),
+  lives_in_europe(...) AS (...)
+SELECT ... JOIN born_in_usa ... JOIN lives_in_europe ...;</code></pre>
+</div>
+</div>
+<p>Each edge traversed is a join. SQL normally knows its joins in advance, but here the count isn't fixed, so you need <code>WITH RECURSIVE</code>. It's possible, but clumsy. The <b>right data model and query language can make a huge difference.</b> <b>GQL</b>, an ISO standard based on Cypher, was published in 2024. The optimizer can also run the query backwards: find "United States" and "Europe" by index, walk incoming WITHIN edges, then the BORN_IN and LIVES_IN edges.</p>
+
+<h3>Triple stores &amp; SPARQL · Datalog · GraphQL</h3>
+<div class="grid">
+  <div class="card mai"><h4 class="c-mai">🔺 Triple store + SPARQL</h4>
+    <p>Everything is <b>(subject, predicate, object)</b>: <code>(lucy, marriedTo, alain)</code> is an edge, and <code>(lucy, birthYear, 1989)</code> is a property. Mostly equivalent to property graphs. Comes from <b>RDF</b> and the Semantic Web, so predicates are often URIs to avoid name clashes. Written in <b>Turtle</b>.</p>
+<pre><code>?person :bornIn / :within* / :name "United States".</code></pre>
+    <p>SPARQL predates Cypher. Cypher borrowed its pattern matching.</p></div>
+  <div class="card mai"><h4 class="c-mai">📐 Datalog</h4>
+    <p>Academic (1980s), a subset of Prolog. <b>Relational</b>, but great at recursion. Data = <b>facts</b> (rows). Queries = <b>rules</b> that derive virtual tables, built up step by step like functions calling functions.</p>
+<pre><code>within_recursive(Loc, Name) :- location(Loc, Name, _).
+within_recursive(Loc, Name) :- within(Loc, Via),
+                               within_recursive(Via, Name).</code></pre>
+    <p>Rule 2 calls itself, which is how it traverses a graph.</p></div>
+  <div class="card"><h4>🧩 GraphQL</h4>
+    <p>Not a graph DB language. It's for <b>OLTP clients</b> (mobile, web) to ask for exactly the JSON shape the UI needs. The response mirrors the query. Deliberately limited, because queries come from <b>untrusted</b> clients: <b>no recursion, no arbitrary search</b>, so a client can't DoS the server. Only joins declared in the schema are allowed. Duplicates data in the response (sender name per message) to keep the UI simple. Runs on top of <i>any</i> database. Costs: tooling to reach REST/gRPC services, plus authorization, rate limiting and performance work.</p></div>
+</div>
+
+<details class="recall"><summary>🧠 Pause &amp; recall: why can't a GraphQL client ask "find all students born in Jakarta who now live in Bandung", while Cypher can?</summary>
+GraphQL deliberately forbids arbitrary search conditions and recursive queries (unless the service owner explicitly exposes such a search), because its queries come from untrusted clients and could be expensive enough to cause a denial of service. Cypher is a full query language for trusted users of a graph database.</details>
+
+<!-- ====================================================== -->
+<h2 id="es">8 · Event sourcing and CQRS</h2>
+
+<p>Every model so far is <i>queried in the same form it's written</i>. Event sourcing breaks that: <b>write</b> in the form that's best for writing, then <b>derive</b> read-optimized forms. The simplest, fastest and most expressive way to write is an <b>append-only log of immutable events</b>.</p>
+
+<figure>
+<svg viewBox="0 0 640 200" role="img" aria-label="Commands are validated and become events appended to an immutable log. The log feeds several materialized views: booking status, an organizer dashboard, and a badge printing file.">
+  <defs><marker id="e1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>
+  <rect x="0" y="76" width="100" height="48" rx="10" class="box"/>
+  <text x="50" y="97" text-anchor="middle" font-size="12" font-weight="700">Command</text>
+  <text x="50" y="113" text-anchor="middle" font-size="10" class="muted-t">"book 2 seats"</text>
+  <path d="M100 100 H140" class="line" marker-end="url(#e1)"/>
+  <text x="120" y="92" text-anchor="middle" font-size="10" class="muted-t">validate</text>
+  <g>
+    <rect x="142" y="60" width="210" height="80" rx="8" fill="var(--card-2)" stroke="var(--rule)"/>
+    <text x="247" y="54" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)">Event log (source of truth)</text>
+    <rect x="150" y="70" width="44" height="60" rx="4" fill="var(--accent)" opacity=".35"/>
+    <rect x="200" y="70" width="44" height="60" rx="4" fill="var(--accent)" opacity=".5"/>
+    <rect x="250" y="70" width="44" height="60" rx="4" fill="var(--accent)" opacity=".65"/>
+    <rect x="300" y="70" width="44" height="60" rx="4" fill="var(--accent)" opacity=".85"/>
+    <text x="172" y="104" text-anchor="middle" font-size="9">Opened</text>
+    <text x="222" y="104" text-anchor="middle" font-size="9">Booked</text>
+    <text x="272" y="104" text-anchor="middle" font-size="9">Booked</text>
+    <text x="322" y="104" text-anchor="middle" font-size="9" class="white">Cancelled</text>
+    <text x="247" y="158" text-anchor="middle" font-size="10" class="muted-t">append-only · ordered · past tense</text>
+  </g>
+  <path d="M352 100 L430 40" class="line" marker-end="url(#e1)"/>
+  <path d="M352 100 H430" class="line" marker-end="url(#e1)"/>
+  <path d="M352 100 L430 160" class="line" marker-end="url(#e1)"/>
+  <rect x="432" y="20" width="200" height="38" rx="8" class="box"/><text x="532" y="44" text-anchor="middle" font-size="11">📋 booking status view</text>
+  <rect x="432" y="81" width="200" height="38" rx="8" class="box"/><text x="532" y="105" text-anchor="middle" font-size="11">📊 organizer dashboard</text>
+  <rect x="432" y="142" width="200" height="38" rx="8" class="box"/><text x="532" y="166" text-anchor="middle" font-size="11">🖨 badge print file</text>
+  <text x="532" y="196" text-anchor="middle" font-size="10" class="muted-t">materialized views = projections = read models</text>
+</svg>
+<figcaption>Book's Fig. 3-8 idea (a conference with bulk orders, invoices, reserved seats and room changes, where "seats available" is a hard query). <b>Event sourcing</b>: events are the source of truth. <b>CQRS</b> (command query responsibility segregation): separate read-optimized views derived from the write-optimized log. Both terms come from DDD.</figcaption>
+</figure>
+
+<p>A <b>command</b> is validated first. Only if it's valid does it become a <b>fact</b>, appended as an event. So the log contains only valid events, and a view builder <b>may not reject</b> an event. Name events in the <b>past tense</b> ("seats were booked"): a later cancellation doesn't erase the fact that the booking existed. Try it:</p>
+
+<div class="widget" data-widget="event-sourcing"></div>
+
+<div class="grid">
+  <div class="card" style="border-top:4px solid var(--good)"><h4>👍 Why it's attractive</h4>
+    <ul style="margin:.3em 0;padding-left:1.1em">
+      <li>Events state <b>intent</b> ("booking cancelled" vs "active=false on row 4001…").</li>
+      <li>Views are <b>reproducible</b>: delete, fix code, replay.</li>
+      <li>Many views, any data model, denormalized; even in-memory only.</li>
+      <li>New feature = new view from the old log; add event types freely.</li>
+      <li>Mistakes fixed by a compensating event, so <b>fewer irreversible actions</b> (evolvability, Ch.2).</li>
+      <li>Built-in <b>audit log</b>, useful in regulated domains.</li>
+      <li>Sequential appends absorb write bursts; views catch up later.</li>
+    </ul></div>
+  <div class="card" style="border-top:4px solid var(--bad)"><h4>👎 Watch out for</h4>
+    <ul style="margin:.3em 0;padding-left:1.1em">
+      <li><b>External data</b> (exchange rates) must be in the event or looked up as of the event time, or replays give different results.</li>
+      <li><b>Immutability vs GDPR</b> deletion: per-user logs, keep personal data outside events, or <b>crypto-shredding</b> (delete the key). Each makes rebuilding harder.</li>
+      <li><b>Side effects</b> on replay: don't resend confirmation emails.</li>
+      <li>All views must process events in <b>exactly the same order</b>, which is hard in distributed systems (Ch.10).</li>
+    </ul></div>
+</div>
+
+<p class="muted">Tools: EventStoreDB, MartenDB (on PostgreSQL), Axon, or Kafka + stream processors (Ch.12). Compared with a star-schema fact table: both record past events, but event types differ in shape, and <b>order matters</b> (a fact table is unordered).</p>
+
+<!-- ====================================================== -->
+<h2 id="df">9 · DataFrames, matrices and arrays</h2>
+
+<p>These belong to analytics, data science and ML, rarely OLTP. A <b>DataFrame</b> (R, Pandas, Spark, Dask, ArcticDB) looks like a table and supports filter, group, aggregate and join (called <b>merge</b>). It's driven by a <i>series of commands</i> rather than declarative SQL, which matches how data scientists "wrangle" a private copy step by step.</p>
+
+<figure>
+<svg viewBox="0 0 640 170" role="img" aria-label="A relational ratings table with user, movie and rating columns is pivoted into a sparse matrix with users as rows and movies as columns; empty cells mean no rating.">
+  <text x="110" y="16" text-anchor="middle" font-size="12" font-weight="700">ratings (relational)</text>
+  <g font-size="11" font-family="var(--mono)">
+    <rect x="20" y="24" width="180" height="22" fill="var(--card-2)"/>
+    <text x="30" y="40">user</text><text x="80" y="40">movie</text><text x="150" y="40">rating</text>
+    <text x="30" y="62">ana</text><text x="80" y="62">m1</text><text x="160" y="62">5</text>
+    <text x="30" y="82">ana</text><text x="80" y="82">m3</text><text x="160" y="82">2</text>
+    <text x="30" y="102">budi</text><text x="80" y="102">m2</text><text x="160" y="102">4</text>
+    <text x="30" y="122">citra</text><text x="80" y="122">m1</text><text x="160" y="122">3</text>
+  </g>
+  <path d="M230 80 H330" class="line" marker-end="url(#e1)"/>
+  <text x="280" y="72" text-anchor="middle" font-size="11" class="muted-t">pivot</text>
+  <text x="470" y="16" text-anchor="middle" font-size="12" font-weight="700">matrix (sparse)</text>
+  <g font-size="11" font-family="var(--mono)">
+    <text x="400" y="40">m1</text><text x="460" y="40">m2</text><text x="520" y="40">m3</text>
+    <text x="345" y="66">ana</text><text x="345" y="94">budi</text><text x="345" y="122">citra</text>
+  </g>
+  <g fill="var(--sca)" opacity=".8">
+    <rect x="390" y="50" width="40" height="24" rx="3"/><rect x="510" y="50" width="40" height="24" rx="3"/>
+    <rect x="450" y="78" width="40" height="24" rx="3"/><rect x="390" y="106" width="40" height="24" rx="3"/>
+  </g>
+  <g fill="none" stroke="var(--rule)">
+    <rect x="450" y="50" width="40" height="24" rx="3"/><rect x="390" y="78" width="40" height="24" rx="3"/><rect x="510" y="78" width="40" height="24" rx="3"/>
+    <rect x="450" y="106" width="40" height="24" rx="3"/><rect x="510" y="106" width="40" height="24" rx="3"/>
+  </g>
+  <g font-size="12" font-weight="700" class="white" text-anchor="middle">
+    <text x="410" y="67" class="white">5</text><text x="530" y="67" class="white">2</text><text x="470" y="95" class="white">4</text><text x="410" y="123" class="white">3</text>
+  </g>
+  <text x="470" y="155" text-anchor="middle" font-size="10" class="muted-t">thousands of columns: awkward in SQL, easy in NumPy / DataFrames</text>
+</svg>
+<figcaption>Book's Fig. 3-9 idea (movie recommendations). Matrices hold only numbers: scale dates to floats, and use <b>one-hot encoding</b> for categories (one 0/1 column per genre). Then linear algebra, the basis of many ML algorithms, can run on it.</figcaption>
+</figure>
+
+<p><b>Array databases</b> (e.g. TileDB) store huge multidimensional arrays: geospatial rasters, medical imaging, telescope data. DataFrames are also common for financial time series and now live inside Spark and Flink (Ch.11).</p>
+
+<div class="callout"><b>Not covered, but they exist:</b> genome sequence-similarity search (GenBank), double-entry <b>ledgers</b> (TigerBeetle; blockchains as distributed ledgers), and <b>full-text search</b> (Ch.4).</div>
+
+<p class="big-idea">One model <i>can</i> emulate another (a graph in SQL tables), but often awkwardly. Specialist databases exist for each model, while general ones keep absorbing their neighbours' features. Non-relational models usually don't enforce a schema, yet your code still assumes one. <b>The real question is explicit (on write) or implicit (on read).</b></p>
+
+<!-- ====================================================== -->
+<h2 id="practice">10 · Practice: answer from memory</h2>
+<p class="muted">Scrolling up to check is cheating yourself. Recalling the answer now, with effort, is what makes it stick. <span class="score" data-quiz-score></span></p>
+
+<div class="quiz" data-answer="2">
+  <div class="q">1. A student profile with addresses, emergency contacts and study history, always loaded whole on one page. Which model fits most naturally?</div>
+  <div class="opts">
+    <button class="opt">A property graph database</button>
+    <button class="opt">A star schema warehouse</button>
+    <button class="opt">A document (JSON tree)</button>
+    <button class="opt">An adjacency matrix store</button>
+  </div>
+  <div class="why">A tree of one-to-many (one-to-few) relationships loaded at once fits documents: better locality, no shredding into many tables.</div>
+</div>
+
+<div class="quiz" data-answer="0">
+  <div class="q">2. Your ORM page runs 1 query for 200 comments, then 200 more for authors. Best fix?</div>
+  <div class="opts">
+    <button class="opt">Join or eager-load the authors</button>
+    <button class="opt">Add a second database replica</button>
+    <button class="opt">Cache each comment separately</button>
+    <button class="opt">Switch to a document database</button>
+  </div>
+  <div class="why">That's the N+1 query problem. Do the join in the database (or tell the ORM to fetch authors with the comments): 1 round trip instead of 201.</div>
+</div>
+
+<div class="quiz" data-answer="3">
+  <div class="q">3. Which statement about normalized data is generally true?</div>
+  <div class="opts">
+    <button class="opt">Faster reads, slower writes overall</button>
+    <button class="opt">Needs no joins to show a record</button>
+    <button class="opt">Best for read-only analytic logs</button>
+    <button class="opt">Faster writes, reads need joins</button>
+  </div>
+  <div class="why">One copy makes writes cheap and consistent. Reads must resolve IDs with joins. Denormalized is the reverse, and analytics usually favours it.</div>
+</div>
+
+<div class="quiz" data-answer="1">
+  <div class="q">4. X's materialized timelines store only post and sender IDs. Why not the post text and like count?</div>
+  <div class="opts">
+    <button class="opt">Joins are impossible at that scale</button>
+    <button class="opt">That data changes often and costs space</button>
+    <button class="opt">IDs are required by GraphQL clients</button>
+    <button class="opt">Post text is stored in a graph DB</button>
+  </div>
+  <div class="why">Like counts and profiles change constantly, and copying them into every timeline wastes storage. IDs are hydrated at read time, which parallelizes well.</div>
+</div>
+
+<div class="quiz" data-answer="2">
+  <div class="q">5. Dimension tables are themselves split into sub-dimensions (brand, category). This is a…</div>
+  <div class="opts">
+    <button class="opt">Star schema design</button>
+    <button class="opt">One big table design</button>
+    <button class="opt">Snowflake schema design</button>
+    <button class="opt">Property graph design</button>
+  </div>
+  <div class="why">Snowflake = more normalized star. Star is usually preferred for analyst simplicity. OBT goes the other way and folds dimensions into the fact table.</div>
+</div>
+
+<div class="quiz" data-answer="0">
+  <div class="q">6. "Schemaless" document databases are more accurately described as…</div>
+  <div class="opts">
+    <button class="opt">Schema-on-read, schema implicit</button>
+    <button class="opt">Schema-on-write, schema enforced</button>
+    <button class="opt">Having no structure at all</button>
+    <button class="opt">Using compile-time type checks</button>
+  </div>
+  <div class="why">Code reading the data still assumes a structure; the DB just doesn't enforce it. Like dynamic typing (vs schema-on-write ≈ static typing).</div>
+</div>
+
+<div class="quiz" data-answer="3">
+  <div class="q">7. Why is "people born in the US who live in Europe" clumsy in plain SQL?</div>
+  <div class="opts">
+    <button class="opt">SQL cannot join a table to itself</button>
+    <button class="opt">SQL cannot store vertices or edges</button>
+    <button class="opt">SQL forbids JSON property lookups</button>
+    <button class="opt">Number of joins isn't known upfront</button>
+  </div>
+  <div class="why">Each WITHIN hop is a join, and locations nest to varying depth. SQL needs WITH RECURSIVE (31 lines vs 4 in Cypher).</div>
+</div>
+
+<div class="quiz" data-answer="1">
+  <div class="q">8. Why does GraphQL forbid recursive queries and arbitrary search conditions?</div>
+  <div class="opts">
+    <button class="opt">It only runs on graph databases</button>
+    <button class="opt">Queries come from untrusted clients</button>
+    <button class="opt">JSON cannot represent recursion</button>
+    <button class="opt">It was designed for OLAP reports</button>
+  </div>
+  <div class="why">Expensive queries from clients could cause a denial of service. GraphQL is for OLTP UIs and can sit on any database.</div>
+</div>
+
+<div class="quiz" data-answer="2">
+  <div class="q">9. A bug in a view's code corrupted it. In event sourcing, how do you recover?</div>
+  <div class="opts">
+    <button class="opt">Edit the events already in the log</button>
+    <button class="opt">Restore last week's database backup</button>
+    <button class="opt">Fix code, delete view, replay events</button>
+    <button class="opt">Have the view reject the bad events</button>
+  </div>
+  <div class="why">Views are derived reproducibly from the immutable log, so delete them and rebuild by replaying the same events in the same order with the fixed code. Views may never reject events.</div>
+</div>
+<p class="no-print"><button class="btn" data-quiz-reset>↺ Reset quiz</button></p>
+
+<h3>Apply it to your own work</h3>
+<p>Pick one system you work on at BINUS. In 4 lines, write down:</p>
+<ol>
+  <li>Its main entities and whether each relationship is <b>one-to-many, many-to-one or many-to-many</b>.</li>
+  <li>One field that is <b>denormalized</b> (copied) today, and how the copies are kept in sync, if they are.</li>
+  <li>Whether its schema is enforced <b>on write</b> or assumed <b>on read</b> (JSON columns count).</li>
+  <li>One business process where an <b>event log</b> (with past-tense events) would make auditing or rebuilding easier.</li>
+</ol>
+<p class="muted">Paste your answer to your teacher (Claude) for feedback. It becomes the starting point for Chapter 4 (storage engines for these models).</p>
+
+<!-- ====================================================== -->
+<h2>Read next</h2>
+<div class="card">
+  <h4>📖 Primary source</h4>
+  <p>Martin Kleppmann &amp; Chris Riccomini, <i>Designing Data-Intensive Applications</i>, 2nd ed. (O'Reilly, 2026), Chapter 3, pp. 65–108 (PDF pages 89–132), in your PDF under <code>03_Resources/Books &amp; Reading</code>. You're reading it now, so use this lesson as the map and the book as the terrain.</p>
+  <p><b>If you only read one extra:</b> <a href="https://martinfowler.com/eaaDev/EventSourcing.html">"Event Sourcing" (Martin Fowler)</a>, the classic short intro, with <a href="https://martinfowler.com/bliki/CQRS.html">"CQRS"</a> as its companion. Bonus: Codd's 1970 paper "A Relational Model of Data for Large Shared Data Banks" (search the title), only a few pages to see where it all began.</p>
+</div>
+
+<div class="ask">💬 <b>Stuck or curious?</b> Ask your teacher (Claude) anything. Some ideas: "should our course catalogue be a document or tables?", "show me N+1 in Django ORM and the fix", "how would event sourcing model grade changes?", "quiz me again tomorrow". Follow-up questions are the point.</div>
+
+<div class="pager">
+  <a href="0002-ch2-defining-nonfunctional-requirements.html">← Lesson 0002 · Ch.2 Nonfunctional requirements</a>
+  <span><a href="../reference/ch3-cheatsheet.html">Ch.3 cheat sheet</a> · <span class="muted">Ch.4 Storage &amp; Retrieval → (next)</span></span>
+</div>
+
+</main>
+</body>
+</html>

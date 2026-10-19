@@ -264,7 +264,122 @@
   <dd>A change you can't undo (e.g. a migration with no way back). Major obstacle to evolvability; minimize it. <span class="src">[Ch.2]</span></dd>
 </dl>
 
-<p class="pager"><a href="../lessons/0001-ch1-trade-offs-in-data-systems-architecture.html">← Lesson 0001</a> <a href="../lessons/0002-ch2-defining-nonfunctional-requirements.html">Lesson 0002 →</a></p>
+
+<h2>Chapter 3 · Data models and query languages</h2>
+<dl class="glossary">
+  <dt>Data model</dt>
+  <dd>How data is represented for the layer above: tables, JSON documents, graph, event log, DataFrame. Shapes how you think about the problem. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Declarative query language</dt>
+  <dd>States what result you want (conditions, sorting, grouping), not how. The query optimizer picks indexes, join algorithms and order. E.g. SQL, Cypher, SPARQL, Datalog. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Query optimizer</dt>
+  <dd>Database component that decides how to execute a declarative query. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Relational model / relation / tuple</dt>
+  <dd>Codd (1970): data as relations (SQL tables), each an unordered collection of tuples (rows). <span class="src">[Ch.3]</span></dd>
+
+  <dt>NoSQL / NewSQL</dt>
+  <dd>NoSQL: 2010s set of ideas (new data models, schema flexibility, scaling, open source). NewSQL: NoSQL-style scale with relational model and transactions. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Document model</dt>
+  <dd>Data as self-contained documents, usually JSON. Fits trees of one-to-many relationships. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Impedance mismatch</dt>
+  <dd>The awkward translation between application objects and relational tables, rows and columns. <span class="src">[Ch.3]</span></dd>
+
+  <dt>ORM</dt>
+  <dd>Object-relational mapping framework (e.g. ActiveRecord, Hibernate) that reduces translation boilerplate between objects and tables. <span class="src">[Ch.3]</span></dd>
+
+  <dt>N+1 query problem</dt>
+  <dd>1 query fetches N records, then 1 extra query per record fetches related data. Fix with a join or eager loading. <span class="src">[Ch.3]</span></dd>
+
+  <dt>One-to-many (one-to-few) / many-to-one / many-to-many</dt>
+  <dd>One parent, several children (a tree) / many records reference one shared record / both sides have many (needs a join table). <span class="src">[Ch.3]</span></dd>
+
+  <dt>Join (associative) table</dt>
+  <dd>Table whose rows each link one ID on each side of a many-to-many relationship. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Normalization / denormalization</dt>
+  <dd>Normalized: human-meaningful data stored once, referenced by ID (fast writes, joins on read). Denormalized: copies stored where used (fast reads, costly writes, risk of drift). Denormalized data is a form of derived data. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Join</dt>
+  <dd>Resolving a reference (ID) into the record it points to, in the database or in application code. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Hydrating IDs</dt>
+  <dd>Looking up human-readable data for IDs at read time. A join in application code (e.g. X timelines). <span class="src">[Ch.3]</span></dd>
+
+  <dt>Locality</dt>
+  <dd>Storing data that's read together in one place, so one read fetches it. Documents have it; also Spanner interleaving and Bigtable column families. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Shredding</dt>
+  <dd>Splitting a document-like tree into multiple relational tables. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Schema-on-read / schema-on-write</dt>
+  <dd>On-read: structure implicit, interpreted when read ("schemaless", like dynamic typing). On-write: schema explicit and enforced on every write (like static typing). <span class="src">[Ch.3]</span></dd>
+
+  <dt>Schema migration</dt>
+  <dd>Changing the structure of stored data (e.g. ALTER TABLE). Big rewrites are slow and operationally risky. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Aggregation pipeline</dt>
+  <dd>MongoDB's JSON-syntax query language for filtering, grouping and joining ($lookup) documents. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Star schema / fact table / dimension table</dt>
+  <dd>Warehouse schema: central fact table (one row per event) with foreign keys to dimension tables (who, what, where, when, how, why). <span class="src">[Ch.3]</span></dd>
+
+  <dt>Snowflake schema</dt>
+  <dd>Star schema whose dimensions are split into sub-dimensions. More normalized, more joins. <span class="src">[Ch.3]</span></dd>
+
+  <dt>One big table (OBT)</dt>
+  <dd>Warehouse design that folds dimensions into the fact table (pre-joined). More storage, sometimes faster queries. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Graph / vertex / edge</dt>
+  <dd>Vertices (nodes, entities) connected by edges (relationships, arcs). <span class="src">[Ch.3]</span></dd>
+
+  <dt>Property graph</dt>
+  <dd>Vertices and edges each have an ID, a label and key-value properties; edges have a tail (start) and head (end) vertex. E.g. Neo4j. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Cypher / GQL</dt>
+  <dd>Declarative property-graph query language (from Neo4j, now openCypher). GQL: ISO standard based on Cypher (2024). <span class="src">[Ch.3]</span></dd>
+
+  <dt>Recursive CTE</dt>
+  <dd>SQL WITH RECURSIVE: expresses variable-length traversals, but clumsily compared with graph languages. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Triple store / RDF / SPARQL</dt>
+  <dd>Data as (subject, predicate, object) triples. RDF is the Semantic Web data model (written e.g. in Turtle). SPARQL is its query language. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Datalog</dt>
+  <dd>Older relational query language (subset of Prolog): facts plus rules that derive virtual tables. Rules can be recursive. <span class="src">[Ch.3]</span></dd>
+
+  <dt>GraphQL</dt>
+  <dd>Client query language for OLTP UIs: the response JSON mirrors the requested shape. No recursion or arbitrary search, because clients are untrusted. Works on any backend. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Event sourcing</dt>
+  <dd>Store every state change as an immutable, past-tense event appended to a log. The log is the source of truth. <span class="src">[Ch.3]</span></dd>
+
+  <dt>CQRS</dt>
+  <dd>Command query responsibility segregation: write to a write-optimized form (event log), and derive separate read-optimized views from it. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Command vs event</dt>
+  <dd>Command: a user request, validated first and possibly rejected. Event: a fact recorded after a valid command. Views may not reject events. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Projection / read model</dt>
+  <dd>A materialized view derived from an event log. Can be deleted and rebuilt by replaying the events in order. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Crypto-shredding</dt>
+  <dd>Encrypt personal data with a per-user key and delete the key to "erase" the data from an immutable log. <span class="src">[Ch.3]</span></dd>
+
+  <dt>DataFrame</dt>
+  <dd>Table-like structure manipulated by a series of commands (R, Pandas, Spark). Join is called merge. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Sparse matrix / one-hot encoding</dt>
+  <dd>Matrix where most cells are empty / one 0-or-1 column per category value, turning categories into numbers for ML. <span class="src">[Ch.3]</span></dd>
+
+  <dt>Array database</dt>
+  <dd>Database specialized in large multidimensional numeric arrays (e.g. TileDB): rasters, imaging, astronomy. <span class="src">[Ch.3]</span></dd>
+</dl>
+
+<p class="pager"><a href="../lessons/0001-ch1-trade-offs-in-data-systems-architecture.html">← Lesson 0001</a> <a href="../lessons/0003-ch3-data-models-and-query-languages.html">Lesson 0003 →</a></p>
 </main>
 </body>
 </html>

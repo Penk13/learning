@@ -39,6 +39,14 @@
 - [Paper: "Out of the Tar Pit" — Moseley & Marks, 2006](https://curtclifton.net/papers/MoseleyMarks06a.pdf)
   Optional extra (cited in 1st ed., not 2nd). Use for: deeper take on accidental complexity.
 
+### Ch.3 · Data models and query languages
+- Paper: "A Relational Model of Data for Large Shared Data Banks" — E. F. Codd, CACM 1970 (search title).
+  Use for: origin of the relational model; "nonsimple domains" ≈ nested JSON.
+- [Blog: "Event Sourcing" — Martin Fowler, 2005](https://martinfowler.com/eaaDev/EventSourcing.html)
+  Use for: event sourcing basics.
+- [Blog: "CQRS" — Martin Fowler, 2011](https://martinfowler.com/bliki/CQRS.html)
+  Use for: separating read and write models; when not to use it.
+
 ## Wisdom (Communities)
 
 - Not yet chosen. Ask learner whether they want one (e.g. an internal BINUS IT reading group, or an online DDIA book club).
