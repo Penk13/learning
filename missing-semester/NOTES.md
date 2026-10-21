@@ -9,3 +9,4 @@
 - Scope: follow the official 2026 nine-topic syllabus in order. Do not create a `practice/` directory unless later lessons need persistent runnable artifacts.
 - Learner preference (2026-10-19): read all lessons of a topic first for the big picture, then do quizzes and sandbox tasks afterwards. Lessons put reading first and a "Practise later" block before the quizzes.
 - Topic 2 status (2026-10-19): learner read the official lecture and lesson 0002; lessons 0003–0005 written. Signals, SSH/tmux and dotfiles were new to the learner. Practice and retrieval for 0002–0005 still pending; no learning record until it's done.
+- Course closed (2026-10-21): learner read all nine lectures and judged further lessons not relevant. They already know Git and use AI agents for debugging, CI/CD, and commit/push. Practice for 0002–0005 dropped; no more learning records or lessons. Advised keeping the concepts for reviewing agent output (root-cause fixes, CI/deploy changes, secrets).

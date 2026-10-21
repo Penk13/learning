@@ -2,6 +2,8 @@
 
 A short, interactive learning workspace for making everyday .NET/React and Django development more effective through better command-line, debugging, Git, shipping, AI-assisted, and code-quality workflows.
 
+> **Status: Finished (2026-10-21).** All nine official lectures read. The course was closed early: the learner already knows Git and delegates most debugging, CI/CD, and Git work to AI agents, so hands-on drills were judged low value. Lessons 0001–0005 stay as reference; no further lessons will be built.
+
 ## Start here
 
 - [Mission](MISSION.md)
@@ -13,19 +15,19 @@ A short, interactive learning workspace for making everyday .NET/React and Djang
 
 ## Course map
 
-The curriculum follows the official [2026 syllabus](https://missing.csail.mit.edu/2026/). Each course session is a starting point; it may later expand into several short lessons.
+The curriculum follows the official [2026 syllabus](https://missing.csail.mit.edu/2026/). Lessons were built for Topics 1–2; Topics 3–9 were read from the official notes only.
 
 | # | Date | Topic | Official source | Status |
 |---:|---|---|---|---|
 | 1 | 12 Jan 2026 | Course Overview + Introduction to the Shell | [Course page](https://missing.csail.mit.edu/2026/course-shell/) | [Lesson 0001](lessons/0001-introduction-to-the-shell.html) |
 | 2 | 13 Jan 2026 | Command-line Environment | [Course page](https://missing.csail.mit.edu/2026/command-line-environment/) | [0002](lessons/0002-environment-variables-and-scripts.html) env vars + scripts · [0003](lessons/0003-signals-and-job-control.html) signals + jobs · [0004](lessons/0004-ssh-and-tmux.html) SSH + tmux · [0005](lessons/0005-dotfiles-and-shell-customization.html) dotfiles + customization |
-| 3 | 14 Jan 2026 | Development Environment and Tools | [Course page](https://missing.csail.mit.edu/2026/development-environment/) | Planned |
-| 4 | 15 Jan 2026 | Debugging and Profiling | [Course page](https://missing.csail.mit.edu/2026/debugging-profiling/) | Planned |
-| 5 | 16 Jan 2026 | Version Control and Git | [Course page](https://missing.csail.mit.edu/2026/version-control/) | Planned |
-| 6 | 20 Jan 2026 | Packaging and Shipping Code | [Course page](https://missing.csail.mit.edu/2026/shipping-code/) | Planned |
-| 7 | 21 Jan 2026 | Agentic Coding | [Course page](https://missing.csail.mit.edu/2026/agentic-coding/) | Planned |
-| 8 | 22 Jan 2026 | Beyond the Code | [Course page](https://missing.csail.mit.edu/2026/beyond-code/) | Planned |
-| 9 | 23 Jan 2026 | Code Quality | [Course page](https://missing.csail.mit.edu/2026/code-quality/) | Planned |
+| 3 | 14 Jan 2026 | Development Environment and Tools | [Course page](https://missing.csail.mit.edu/2026/development-environment/) | Lecture read |
+| 4 | 15 Jan 2026 | Debugging and Profiling | [Course page](https://missing.csail.mit.edu/2026/debugging-profiling/) | Lecture read |
+| 5 | 16 Jan 2026 | Version Control and Git | [Course page](https://missing.csail.mit.edu/2026/version-control/) | Lecture read |
+| 6 | 20 Jan 2026 | Packaging and Shipping Code | [Course page](https://missing.csail.mit.edu/2026/shipping-code/) | Lecture read |
+| 7 | 21 Jan 2026 | Agentic Coding | [Course page](https://missing.csail.mit.edu/2026/agentic-coding/) | Lecture read |
+| 8 | 22 Jan 2026 | Beyond the Code | [Course page](https://missing.csail.mit.edu/2026/beyond-code/) | Lecture read |
+| 9 | 23 Jan 2026 | Code Quality | [Course page](https://missing.csail.mit.edu/2026/code-quality/) | Lecture read |
 
 ## Learning loop
 
