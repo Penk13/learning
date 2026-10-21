@@ -34,4 +34,5 @@ Static site, no framework, deployed as a Cloudflare Worker with static assets. E
   python build_index.py
   ```
 
+- `assets/` holds the shared, mobile-first design: `site.css` (tokens, light/dark, every common lesson component) and `site.js` (theme toggle, reading progress line, auto-hiding top bar). The build loads `site.css` before each course stylesheet and adds a top bar and prev/next navigation to every lesson and reference page, so lessons need no nav or base styles of their own. Course stylesheets hold only course-specific components.
 - `wrangler.jsonc` holds the Worker config and serves `dist/`. Lessons link to `.md` notes on GitHub.

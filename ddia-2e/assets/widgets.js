@@ -21,7 +21,13 @@
   const fmt = (n) => n >= 1e6 ? (n / 1e6).toFixed(n >= 1e7 ? 0 : 1) + "M"
                    : n >= 1e3 ? (n / 1e3).toFixed(n >= 1e4 ? 0 : 1) + "k"
                    : String(Math.round(n));
-  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  // Resolve a colour token to rgb() via a hidden probe, so light-dark() tokens follow the theme.
+  let probe;
+  const css = (name) => {
+    if (!probe) { probe = document.createElement("i"); probe.hidden = true; document.body.append(probe); }
+    probe.style.color = `var(${name})`;
+    return getComputedStyle(probe).color;
+  };
   const svgEl = (tag, attrs) => {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
     for (const k in attrs) el.setAttribute(k, attrs[k]);
@@ -453,7 +459,8 @@
       if (fn) fn(el);
     });
     // redraw widgets on theme change so SVG colors follow
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () =>
+    // (site.js fires "themechange" for both the system setting and the theme toggle)
+    window.addEventListener("themechange", () =>
       document.querySelectorAll("[data-widget]").forEach((el) => WIDGETS[el.dataset.widget]?.(el)));
   });
 })();
