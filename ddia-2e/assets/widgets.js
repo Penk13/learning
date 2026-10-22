@@ -13,6 +13,8 @@
  *           <div class="widget" data-widget="provisioning"></div>
  *           <div class="widget" data-widget="n-plus-one"></div>
  *           <div class="widget" data-widget="event-sourcing"></div>
+ *           <div class="widget" data-widget="lsm"></div>
+ *           <div class="widget" data-widget="bloom"></div>
  */
 (function () {
   "use strict";
@@ -449,8 +451,199 @@
     render();
   }
 
+  /* ---------------- LSM-tree (Ch.4, book Figs. 4-2/4-3 idea) ----------------
+   * Writes go to a memtable; full memtable flushes to an immutable sorted segment.
+   * Reads check memtable then segments newest → oldest. Compaction merges segments,
+   * keeping the newest value per key and dropping tombstones. */
+  function lsm(root) {
+    const KEYS = ["apple", "banana", "cherry", "durian", "mango", "salak"];
+    const LIMIT = 3, TOMB = "🪦";
+    let mem = new Map(), segs = [], ver = 0, msg = "Write some keys. The memtable flushes to disk when it holds 3 keys.", hit = null;
+    root.innerHTML = `
+      <div class="w-title">LSM-tree: memtable → SSTables → compaction</div>
+      <div class="w-sub">Each write gets a version number (v1, v2…). Segments on disk are sorted and never modified; they're only merged into new ones.</div>
+      <div class="row">
+        <button class="btn" data-k="w">✏ Write a random key</button>
+        <button class="btn" data-k="d">🪦 Delete a key</button>
+        <button class="btn" data-k="f">💾 Flush memtable</button>
+        <button class="btn" data-k="c">🗜 Compact segments</button>
+        <button class="btn" data-k="x">Reset</button>
+      </div>
+      <label>Look up a key:</label>
+      <div class="row" data-k="look"></div>
+      <div data-k="view" style="margin-top:.8em;font-family:var(--mono);font-size:.78rem"></div>
+      <div class="row" style="margin-top:.6em">
+        <span class="stat">Segments on disk<b data-k="s1"></b></span>
+        <span class="stat">Entries stored<b data-k="s2"></b></span>
+        <span class="stat">Live keys<b data-k="s3"></b></span>
+      </div>
+      <p class="readout" data-k="msg"></p>`;
+    const look = $('[data-k="look"]', root);
+    KEYS.forEach((k) => {
+      const b = document.createElement("button"); b.className = "btn"; b.textContent = k;
+      b.addEventListener("click", () => lookup(k)); look.append(b);
+    });
+    const chip = (k, v, hl) => `<span style="display:inline-block;margin:2px;padding:3px 7px;border-radius:6px;` +
+      `background:${hl ? "var(--accent)" : "var(--surface-2)"};color:${hl ? "var(--on-accent)" : "inherit"}">${k}=${v}</span>`;
+    const sorted = (m) => [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const flush = () => {
+      if (!mem.size) return false;
+      segs.unshift(sorted(mem)); mem = new Map(); return true;
+    };
+    const put = (k, v) => { mem.set(k, v); if (mem.size >= LIMIT) { flush(); return true; } return false; };
+    const lookup = (k) => {
+      let checked = 1;
+      if (mem.has(k)) { hit = { where: -1, k }; }
+      else {
+        hit = null;
+        for (let i = 0; i < segs.length; i++) {
+          checked++;
+          if (segs[i].some(([kk]) => kk === k)) { hit = { where: i, k }; break; }
+        }
+      }
+      const v = hit ? (hit.where < 0 ? mem.get(k) : segs[hit.where].find(([kk]) => kk === k)[1]) : null;
+      msg = `Looked in <b>${checked}</b> place${checked > 1 ? "s" : ""} (memtable first, then newest → oldest segment). ` +
+        (v === null ? `<b>${k}</b> not found anywhere, so it doesn't exist. Every segment had to be checked: that's what Bloom filters speed up.`
+          : v === TOMB ? `Found a <b>tombstone</b>: ${k} was deleted. Stop searching; older values don't count.`
+          : `Found <b>${k}=${v}</b>. Older segments may still hold stale versions, but the newest wins.`);
+      render();
+    };
+    const render = () => {
+      const live = new Map();
+      [...segs].reverse().forEach((s) => s.forEach(([k, v]) => live.set(k, v)));
+      mem.forEach((v, k) => live.set(k, v));
+      const nLive = [...live.values()].filter((v) => v !== TOMB).length;
+      const rows = [`<div style="padding:6px;border:1.5px dashed var(--accent);border-radius:8px"><b style="font-family:var(--sans)">🧠 Memtable (RAM, sorted)</b><br>` +
+        (mem.size ? sorted(mem).map(([k, v]) => chip(k, v, hit && hit.where < 0 && hit.k === k)).join("") : '<span class="muted">empty</span>') + `</div>`];
+      segs.forEach((s, i) => rows.push(`<div style="padding:6px;margin-top:6px;border:1px solid var(--line);border-radius:8px">` +
+        `<b style="font-family:var(--sans)">💾 Segment ${segs.length - i}${i === 0 ? " (newest)" : i === segs.length - 1 ? " (oldest)" : ""}</b><br>` +
+        s.map(([k, v]) => chip(k, v, hit && hit.where === i && hit.k === k)).join("") + `</div>`));
+      $('[data-k="view"]', root).innerHTML = rows.join("");
+      $('[data-k="s1"]', root).textContent = segs.length;
+      $('[data-k="s2"]', root).textContent = segs.reduce((n, s) => n + s.length, 0) + mem.size;
+      $('[data-k="s3"]', root).textContent = nLive;
+      $('[data-k="msg"]', root).innerHTML = msg;
+    };
+    $('[data-k="w"]', root).addEventListener("click", () => {
+      const k = KEYS[Math.floor(Math.random() * KEYS.length)]; hit = null;
+      const flushed = put(k, "v" + ++ver);
+      msg = `Wrote <b>${k}=v${ver}</b> into the memtable (plus the on-disk log, for crash recovery).` +
+        (flushed ? " Memtable was full → written out as a new sorted segment." : "");
+      render();
+    });
+    $('[data-k="d"]', root).addEventListener("click", () => {
+      const k = KEYS[Math.floor(Math.random() * KEYS.length)]; hit = null;
+      const flushed = put(k, TOMB);
+      msg = `Deleted <b>${k}</b> by appending a <b>tombstone</b>. Old values stay on disk until compaction.` +
+        (flushed ? " Memtable flushed." : "");
+      render();
+    });
+    $('[data-k="f"]', root).addEventListener("click", () => {
+      hit = null; msg = flush() ? "Memtable written out as a new immutable segment." : "Memtable is empty."; render();
+    });
+    $('[data-k="c"]', root).addEventListener("click", () => {
+      hit = null;
+      if (segs.length < 2) { msg = "Need at least 2 segments to merge."; return render(); }
+      const before = segs.reduce((n, s) => n + s.length, 0), merged = new Map();
+      [...segs].reverse().forEach((s) => s.forEach(([k, v]) => merged.set(k, v)));
+      merged.forEach((v, k) => { if (v === TOMB) merged.delete(k); });
+      segs = merged.size ? [sorted(merged)] : [];
+      msg = `Merged like mergesort: kept only the newest value per key and dropped tombstones (this is the oldest segment now). ` +
+        `${before} entries → ${merged.size}. Reads now check fewer files.`;
+      render();
+    });
+    $('[data-k="x"]', root).addEventListener("click", () => {
+      mem = new Map(); segs = []; ver = 0; hit = null; msg = "Write some keys. The memtable flushes to disk when it holds 3 keys."; render();
+    });
+    render();
+  }
+
+  /* ---------------- Bloom filter (Ch.4, book Fig. 4-4 idea) ----------------
+   * 16 bits, 3 hash positions per key (seeded FNV-1a). Toy size so false positives show up quickly. */
+  function bloom(root) {
+    const M = 16, K = 3;
+    const hashes = (s) => {
+      const out = [];
+      for (let seed = 0; out.length < K; seed++) {
+        let h = 2166136261 ^ seed;
+        for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+        const p = (h >>> 0) % M;
+        if (!out.includes(p)) out.push(p);
+      }
+      return out;
+    };
+    const START = ["handbag", "handsome"];
+    const TRY = ["handbag", "handheld", "handcuff", "handle", "handful", "handshake", "handy"];
+    let keys, bits, q, msg;
+    const reset = () => {
+      keys = [...START]; bits = Array(M).fill(0); q = null;
+      keys.forEach((k) => hashes(k).forEach((p) => (bits[p] = 1)));
+      msg = "This SSTable contains <b>handbag</b> and <b>handsome</b>. Check some keys before reading the segment from disk.";
+    };
+    root.innerHTML = `
+      <div class="w-title">Bloom filter: "definitely not" or "probably yes"</div>
+      <div class="w-sub">Each key sets 3 of the 16 bits. To check a key, look at its 3 bits: any 0 means the key is definitely absent.</div>
+      <svg viewBox="0 0 640 96" data-k="svg" role="img" aria-label="Row of 16 bits of the Bloom filter"></svg>
+      <label>Check a key:</label>
+      <div class="row" data-k="try"></div>
+      <div class="row" style="margin-top:.5em">
+        <button class="btn" data-k="add">➕ Add a key to the SSTable</button>
+        <button class="btn" data-k="x">Reset</button>
+      </div>
+      <div class="row" style="margin-top:.6em">
+        <span class="stat">Keys in SSTable<b data-k="n"></b></span>
+        <span class="stat">Bits set to 1<b data-k="ones"></b></span>
+      </div>
+      <p class="readout" data-k="msg"></p>`;
+    const tryRow = $('[data-k="try"]', root);
+    TRY.forEach((k) => {
+      const b = document.createElement("button"); b.className = "btn"; b.textContent = k;
+      b.addEventListener("click", () => {
+        const ps = hashes(k), allOne = ps.every((p) => bits[p]), real = keys.includes(k);
+        q = { k, ps };
+        msg = `<b>${k}</b> → bits (${ps.join(", ")}). ` +
+          (!allOne ? "At least one bit is 0 → <b>definitely not here</b>. Skip this SSTable without touching disk."
+            : real ? "All 1 → <b>probably here</b>. Read the block: it really is there."
+            : "All 1 → <b>probably here</b>… but it isn't! A <b>false positive</b>: other keys set those bits. Cost: one wasted block read, then keep searching. No wrong answer.");
+        draw();
+      });
+      tryRow.append(b);
+    });
+    const draw = () => {
+      const svg = $('[data-k="svg"]', root); svg.innerHTML = "";
+      const w = 36, x0 = (640 - M * w) / 2;
+      for (let i = 0; i < M; i++) {
+        const asked = q && q.ps.includes(i);
+        svg.append(svgEl("rect", { x: x0 + i * w + 2, y: 22, width: w - 4, height: 40, rx: 6,
+          fill: bits[i] ? css("--accent") : css("--surface-2"),
+          stroke: asked ? (bits[i] ? css("--good") : css("--bad")) : css("--line"), "stroke-width": asked ? 4 : 1 }));
+        const t = svgEl("text", { x: x0 + i * w + w / 2, y: 47, "text-anchor": "middle", "font-size": 15, "font-weight": 700,
+          fill: bits[i] ? "#fff" : css("--muted") });
+        t.textContent = bits[i]; svg.append(t);
+        const n = svgEl("text", { x: x0 + i * w + w / 2, y: 16, "text-anchor": "middle", "font-size": 10, fill: css("--muted") });
+        n.textContent = i; svg.append(n);
+        if (asked) {
+          const a = svgEl("text", { x: x0 + i * w + w / 2, y: 84, "text-anchor": "middle", "font-size": 14, fill: bits[i] ? css("--good") : css("--bad") });
+          a.textContent = "▲"; svg.append(a);
+        }
+      }
+      $('[data-k="n"]', root).textContent = keys.length;
+      $('[data-k="ones"]', root).textContent = `${bits.filter(Boolean).length} / ${M}`;
+      $('[data-k="msg"]', root).innerHTML = msg;
+    };
+    $('[data-k="add"]', root).addEventListener("click", () => {
+      const pool = ["hamster", "harbour", "hazard", "habit", "halo", "hammock", "harvest", "hatch"].filter((k) => !keys.includes(k));
+      if (!pool.length) { msg = "Filter is crowded now. Almost every check says \"probably yes\": that's why real filters use ~10 bits per key."; return draw(); }
+      const k = pool[0]; keys.push(k); hashes(k).forEach((p) => (bits[p] = 1)); q = null;
+      msg = `Added <b>${k}</b>. More keys → more 1s → more false positives. Check the keys again.`;
+      draw();
+    });
+    $('[data-k="x"]', root).addEventListener("click", () => { reset(); draw(); });
+    reset(); draw();
+  }
+
   const WIDGETS = { percentiles, "tail-amplification": tailAmplification, fanout, queueing, provisioning,
-                    "n-plus-one": nPlusOne, "event-sourcing": eventSourcing };
+                    "n-plus-one": nPlusOne, "event-sourcing": eventSourcing, lsm, bloom };
 
   document.addEventListener("DOMContentLoaded", () => {
     initQuizzes();

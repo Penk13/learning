@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DDIA Ch.4 Cheat Sheet</title>
+<link rel="stylesheet" href="../assets/course.css">
+<style>
+  main { max-width: 900px; }
+  .grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card ul { margin: .3em 0; padding-left: 1.1em; }
+  .card li { margin: .15em 0; }
+</style>
+</head>
+<body>
+<main>
+<div class="kicker">DDIA 2nd ed. · Reference · Chapter 4 (pp. 115–150)</div>
+<h1>Storage and Retrieval</h1>
+<p class="muted">One page. Print it. Terms → <a href="glossary.html">glossary</a>.</p>
+
+<div class="table-wrap">
+<table class="compare">
+  <tr><th>Need</th><th>Reach for</th><th>Why</th></tr>
+  <tr><td>Write-heavy OLTP</td><td>🪵 LSM-tree (RocksDB, Cassandra)</td><td>Sequential writes, lower write amplification, compresses well</td></tr>
+  <tr><td>Read-heavy OLTP, range queries</td><td>🌳 B-tree (every relational DB)</td><td>One page per level, predictable reads</td></tr>
+  <tr><td>Scans over few columns, many rows</td><td>📊 Column store (Snowflake, DuckDB, Parquet)</td><td>Read only needed columns; bitmaps + RLE; vectorized/compiled execution</td></tr>
+  <tr><td>Map / range on 2+ fields at once</td><td>🗺 R-tree, Bkd-tree (PostGIS)</td><td>Nearby points grouped in one subtree</td></tr>
+  <tr><td>Keyword search</td><td>🔤 Inverted index (Lucene, GIN)</td><td>Term → postings list; AND = bitmap intersection</td></tr>
+  <tr><td>Search by meaning</td><td>🧭 Vector index (Faiss, pgvector)</td><td>Embeddings; flat (exact) / IVF / HNSW (approximate)</td></tr>
+</table>
+</div>
+
+<div class="grid">
+  <div class="card sca">
+    <h4 class="c-sca">🪵 LSM-tree</h4>
+    <ul>
+      <li>Write → log (crash recovery) + <b>memtable</b> (sorted, RAM) → flush as immutable <b>SSTable</b> → background <b>compaction</b> (mergesort, newest wins).</li>
+      <li>SSTable: sorted, unique keys, <b>sparse index</b> per block, compressed blocks.</li>
+      <li>Delete = <b>tombstone</b>. Read = memtable → newest → oldest segment.</li>
+      <li><b>Bloom filter</b>: 0 bit = definitely absent; all 1 = probably (false positive). ~10 bits/key ≈ 1%.</li>
+      <li><b>Size-tiered</b>: write-heavy, big temp disk. <b>Leveled</b>: read-heavy, incremental, less disk.</li>
+    </ul>
+  </div>
+
+  <div class="card rel">
+    <h4 class="c-rel">🌳 B-tree</h4>
+    <ul>
+      <li>Fixed-size <b>pages</b> (4/8/16 KiB) overwritten <b>in place</b>; page refs form a tree.</li>
+      <li><b>Branching factor</b> ~hundreds; depth O(log n), usually 3–4 levels.</li>
+      <li>Full page → <b>split</b>, update parent (maybe up to root).</li>
+      <li><b>WAL</b> before page writes; guards against orphan/<b>torn pages</b>. fsync = durable.</li>
+      <li>Variants: copy-on-write (LMDB), abbreviated keys, sibling pointers.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>⚖ B-tree vs LSM</h4>
+    <ul>
+      <li>Reads: B-tree predictable; LSM checks several SSTables. Range: Bloom filters useless.</li>
+      <li>Writes: B-tree <b>random</b>; LSM <b>sequential</b> (faster, even on SSDs: erase-block GC).</li>
+      <li><b>Write amplification</b> = disk bytes ÷ plain-log bytes. Usually lower in LSM.</li>
+      <li>B-tree: fragmentation, vacuum. LSM: backpressure spikes, slow true deletes, cheap snapshots.</li>
+      <li>Always benchmark your own workload, long enough for compaction to kick in.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>🔑 Indexes &amp; memory</h4>
+    <ul>
+      <li><b>Secondary index</b>: non-unique keys → list of row IDs, or key + row ID.</li>
+      <li><b>Clustered</b> (row in index, InnoDB PK) · <b>heap file</b> + pointer (Postgres) · <b>covering</b> (some columns included).</li>
+      <li>Moved heap row → update all indexes or leave a forwarding pointer.</li>
+      <li><b>In-memory DBs</b> fast because no on-disk encoding, not because no disk reads. Durability via log, snapshots, replicas.</li>
+      <li><b>Embedded</b> engines (SQLite, RocksDB, DuckDB) run in-process; DB-per-tenant.</li>
+    </ul>
+  </div>
+
+  <div class="card mai">
+    <h4 class="c-mai">📊 Analytics storage</h4>
+    <ul>
+      <li>Cloud DW: object storage, storage/compute decoupled. Stack: query engine · storage format · table format (Iceberg, time travel) · catalog.</li>
+      <li><b>Column-oriented</b>: same row order in every column; blocks per time range.</li>
+      <li><b>Bitmap</b> per distinct value + <b>RLE</b> (roaring). IN → OR; across columns → AND.</li>
+      <li>Sort whole rows; first sort key compresses best. Writes in bulk via an LSM-like in-memory store.</li>
+      <li>Not to be confused with <b>wide-column</b> (Bigtable, HBase): row-oriented.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>⚡ Execution &amp; precompute</h4>
+    <ul>
+      <li><b>Query compilation</b> (LLVM, JIT-like) vs <b>vectorized</b> batches of column values.</li>
+      <li>Both: sequential memory, tight loops, SIMD/threads, work on compressed data.</li>
+      <li><b>Materialized view</b> = stored query result (more write work). Virtual view = saved query.</li>
+      <li><b>Data cube</b>: grid of aggregates per dimension; fast but inflexible → keep raw data.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h4>🔎 Search indexes</h4>
+    <ul>
+      <li><b>Concatenated</b> (last, first): useless for "first name only".</li>
+      <li>Multidimensional: R-tree, Bkd-tree, space-filling curve, hex grids.</li>
+      <li><b>Inverted index</b>: term → postings list (bitmap). n-grams for substring/regex. Edit distance via Levenshtein automaton.</li>
+      <li><b>Embeddings</b>: 1,000+ floats; cosine or Euclidean distance. <b>IVF</b> (partitions, probes) · <b>HNSW</b> (layered graph). Used for RAG.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Design-review questions (steal these)</h3>
+<ol>
+  <li>Is our workload read-heavy or write-heavy? Is the storage engine (B-tree or LSM) a match, and did we benchmark it on our data?</li>
+  <li>Which indexes exist, which queries use them, and what does each one cost on writes?</li>
+  <li>Do our reports run against the OLTP database? Should they run on a column store instead?</li>
+  <li>When we delete personal data, how long until it's really gone (tombstones, compaction, backups)?</li>
+  <li>Does search need exact words (inverted index), locations (spatial index), or meaning (vector index)?</li>
+  <li>Are we keeping raw data, or only aggregates that can't answer tomorrow's question?</li>
+</ol>
+
+<p class="pager"><a href="../lessons/0004-ch4-storage-and-retrieval.html">← Lesson 0004</a> <a href="glossary.html">Glossary →</a></p>
+</main>
+</body>
+</html>

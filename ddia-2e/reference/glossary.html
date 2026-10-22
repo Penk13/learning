@@ -379,7 +379,169 @@
   <dd>Database specialized in large multidimensional numeric arrays (e.g. TileDB): rasters, imaging, astronomy. <span class="src">[Ch.3]</span></dd>
 </dl>
 
-<p class="pager"><a href="../lessons/0001-ch1-trade-offs-in-data-systems-architecture.html">← Lesson 0001</a> <a href="../lessons/0003-ch3-data-models-and-query-languages.html">Lesson 0003 →</a></p>
+<h2>Chapter 4 · Storage and retrieval</h2>
+<dl class="glossary">
+  <dt>Log</dt>
+  <dd>An append-only sequence of records on disk, possibly binary. Not the same as application log text. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Index</dt>
+  <dd>Extra structure derived from the primary data to speed up reads. Costs disk space and slows every write. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Storage engine</dt>
+  <dd>The part of a database that lays data out on disk/memory and finds it again (e.g. B-tree, LSM-tree, column store). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Hash index</dt>
+  <dd>In-memory hash map from key to byte offset in a log. Fast point lookups; no range queries, must fit in RAM. <span class="src">[Ch.4]</span></dd>
+
+  <dt>SSTable (Sorted String Table)</dt>
+  <dd>Immutable file of key-value pairs sorted by key, each key once, split into (compressed) blocks. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Sparse index</dt>
+  <dd>Index storing only some keys (e.g. the first key of each block); scan the block to find the rest. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Memtable</dt>
+  <dd>Sorted in-memory structure (red-black tree, skip list, trie) receiving new writes before they're flushed as an SSTable. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Segment</dt>
+  <dd>One SSTable file in an LSM engine; written once, then immutable. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Compaction / merging</dt>
+  <dd>Background process combining segments mergesort-style, keeping the newest value per key and dropping overwritten or deleted data. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Tombstone</dt>
+  <dd>Special deletion record; tells compaction to discard older values for that key. <span class="src">[Ch.4]</span></dd>
+
+  <dt>LSM-tree (Log-Structured Merge-tree)</dt>
+  <dd>Storage engine of memtable + cascading SSTables merged in the background (1996). RocksDB, Cassandra, ScyllaDB, HBase. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Bloom filter</dt>
+  <dd>Small bit array giving a fast, probabilistic "definitely not present" or "probably present" for a key. <span class="src">[Ch.4]</span></dd>
+
+  <dt>False positive</dt>
+  <dd>A check says "present" when the item isn't (Bloom filter bits set by other keys). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Size-tiered / leveled compaction</dt>
+  <dd>Merge small SSTables into ever-larger ones (write-heavy) / fixed-size SSTables in key-range-partitioned levels L0, L1… (read-heavy, less disk). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Embedded database</dt>
+  <dd>Storage engine running as a library inside the application process, no network API (SQLite, RocksDB, LMDB, DuckDB). <span class="src">[Ch.4]</span></dd>
+
+  <dt>B-tree</dt>
+  <dd>Balanced tree of fixed-size pages sorted by key, overwritten in place. Standard index in relational DBs. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Page</dt>
+  <dd>Fixed-size block (4 KiB traditionally; PostgreSQL 8 KiB, MySQL 16 KiB) referenced by page number. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Leaf page</dt>
+  <dd>Bottom B-tree page holding individual keys with their values or references to them. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Branching factor</dt>
+  <dd>Number of child-page references in one B-tree page; typically several hundred. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Page split</dt>
+  <dd>Splitting a full B-tree page into two half-full pages and adding the boundary to the parent. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Write-ahead log (WAL)</dt>
+  <dd>Append-only file every change is written to before it's applied to data pages; replayed after a crash. Journaling in filesystems. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Torn page / orphan page</dt>
+  <dd>Partially written page after a crash / page no longer referenced by any parent. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Copy-on-write</dt>
+  <dd>Write modified pages to a new location and create new parent versions instead of overwriting (LMDB). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Sequential vs random writes</dt>
+  <dd>Few large contiguous writes vs many small writes scattered across the disk. Sequential is faster, even on SSDs. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Write amplification</dt>
+  <dd>Bytes actually written to disk ÷ bytes a plain append-only log would write. Limits write throughput and wears SSDs. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Fragmentation / vacuum</dt>
+  <dd>Unused pages left inside B-tree files after deletes / background process that reorganizes them (PostgreSQL). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Backpressure</dt>
+  <dd>Engine pauses reads and writes when it can't flush and compact fast enough (e.g. RocksDB). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Primary key / secondary index</dt>
+  <dd>Unique identifier of a row, document or vertex / extra index on other columns, whose keys need not be unique. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Clustered index</dt>
+  <dd>Index storing the whole row inside it (InnoDB primary key). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Heap file</dt>
+  <dd>Unordered file holding rows; indexes point to row locations in it (PostgreSQL). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Covering index</dt>
+  <dd>Index that includes some extra columns so certain queries are answered from the index alone. <span class="src">[Ch.4]</span></dd>
+
+  <dt>In-memory database</dt>
+  <dd>Serves all reads from RAM; may still log or snapshot to disk for durability (VoltDB, Redis, RAMCloud). <span class="src">[Ch.4]</span></dd>
+
+  <dt>HTAP</dt>
+  <dd>Hybrid transactional/analytical processing: one product for both, increasingly two engines behind one SQL interface. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Query engine / storage format / table format / data catalog</dt>
+  <dd>Unbundled warehouse parts: runs SQL (Trino) / encodes rows into files (Parquet) / defines which files form a table, time travel (Iceberg, Delta) / lists tables (Polaris, Unity). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Row-oriented vs column-oriented storage</dt>
+  <dd>All values of a row stored together (OLTP) / all values of a column stored together, same row order in each (analytics). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Wide-column (column-family) model</dt>
+  <dd>Rows with many, varying columns (Bigtable, HBase). Despite the name, row-oriented. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Bitmap encoding</dt>
+  <dd>One bitmap per distinct column value, one bit per row. Filters become bitwise OR / AND. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Run-length encoding (RLE)</dt>
+  <dd>Store counts of consecutive repeated values (or 0s/1s) instead of each value. Roaring bitmaps switch forms. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Sort key (column store)</dt>
+  <dd>Column(s) whole rows are sorted by; speeds range scans and makes the first key compress very well. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Query compilation / vectorized processing</dt>
+  <dd>Generate and compile code per query (e.g. LLVM) / interpret, but run built-in operators over batches of column values. <span class="src">[Ch.4]</span></dd>
+
+  <dt>SIMD</dt>
+  <dd>Single instruction, multiple data: one CPU instruction processes several values at once. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Materialized view / virtual view</dt>
+  <dd>Stored copy of a query's results, updated on change / saved query expanded at read time. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Data cube (OLAP cube)</dt>
+  <dd>Materialized grid of aggregates grouped by several dimensions. Fast, but can't answer questions outside its dimensions. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Concatenated index</dt>
+  <dd>Several fields joined into one key in a fixed order, like a phone book (last, first). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Multidimensional index / R-tree</dt>
+  <dd>Index for ranges on several columns at once / spatial index grouping nearby points in subtrees (PostGIS). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Full-text search</dt>
+  <dd>Search documents by keywords appearing anywhere in the text. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Inverted index / postings list</dt>
+  <dd>Term → list (or bitmap) of IDs of documents containing it. Lucene, PostgreSQL GIN. <span class="src">[Ch.4]</span></dd>
+
+  <dt>n-gram</dt>
+  <dd>Substring of length n ("hel", "ell", "llo" are trigrams of hello); indexing them enables substring and regex search. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Edit distance / Levenshtein automaton</dt>
+  <dd>Number of single-letter insertions, deletions or replacements between words / structure Lucene uses to find words within an edit distance. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Semantic search</dt>
+  <dd>Search by meaning and intent, not exact words. Part of retrieval-augmented generation (RAG). <span class="src">[Ch.4]</span></dd>
+
+  <dt>Vector embedding</dt>
+  <dd>Array of floats (often 1,000+) from an embedding model; similar meanings are close in space. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Cosine similarity / Euclidean distance</dt>
+  <dd>Closeness of two vectors by the angle between them / by straight-line distance. <span class="src">[Ch.4]</span></dd>
+
+  <dt>Vector index: flat / IVF / HNSW</dt>
+  <dd>Compare with every vector (exact, slow) / search only nearest partitions, "probes" (approximate) / walk layered proximity graphs (approximate). Faiss, pgvector. <span class="src">[Ch.4]</span></dd>
+</dl>
+
+<p class="pager"><a href="../lessons/0001-ch1-trade-offs-in-data-systems-architecture.html">← Lesson 0001</a> <a href="../lessons/0004-ch4-storage-and-retrieval.html">Lesson 0004 →</a></p>
 </main>
 </body>
 </html>

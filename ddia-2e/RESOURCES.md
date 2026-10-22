@@ -47,6 +47,20 @@
 - [Blog: "CQRS" — Martin Fowler, 2011](https://martinfowler.com/bliki/CQRS.html)
   Use for: separating read and write models; when not to use it.
 
+### Ch.4 · Storage and retrieval
+- Paper: "The Log-Structured Merge-Tree (LSM-Tree)" — O'Neil, Cheng, Gawlick, O'Neil, Acta Informatica 1996 (search title).
+  Use for: origin of LSM-trees. Heavy; skim the intro.
+- Paper: "Bigtable: A Distributed Storage System for Structured Data" — Chang et al., OSDI 2006 (search title).
+  Use for: where the terms SSTable and memtable come from.
+- Paper: "The Ubiquitous B-Tree" — Douglas Comer, ACM Computing Surveys 1979 (search title).
+  Use for: short classic B-tree survey.
+- Blog: "Why Databases Use Ordered Indexes but Programming Uses Hash Tables" — Evan Jones, 2019 (search title).
+  Use for: why sorted structures beat hash indexes in databases.
+- Blog: "Name That Compaction Algorithm" — Mark Callaghan, smalldatum.blogspot.com, 2018 (search title).
+  Use for: size-tiered vs leveled compaction.
+- Paper: "LSM-Based Storage Techniques: a Survey" — Luo & Carey, VLDB Journal 2019 (search title).
+  Optional deep dive. Use for: LSM design space.
+
 ## Wisdom (Communities)
 
 - Not yet chosen. Ask learner whether they want one (e.g. an internal BINUS IT reading group, or an online DDIA book club).
