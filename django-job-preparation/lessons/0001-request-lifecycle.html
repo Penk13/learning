@@ -78,7 +78,7 @@ def detail(request, pk):
       <div class="eyebrow">Check your understanding</div>
       <h2>Answer before reading the explanation</h2>
 
-      <div class="quiz" data-quiz>
+      <div data-qid="q1" class="quiz" data-quiz>
         <div class="quiz-label">Question 1 of 3</div>
         <p class="quiz-question">What does a URLconf primarily do?</p>
         <div class="quiz-options">
@@ -91,7 +91,7 @@ def detail(request, pk):
         <p class="quiz-explanation">A URLconf maps URL path expressions to view callables. Django checks patterns in order and stops at the first match.</p>
       </div>
 
-      <div class="quiz" data-quiz>
+      <div data-qid="q2" class="quiz" data-quiz>
         <div class="quiz-label">Question 2 of 3</div>
         <p class="quiz-question">What must a view ultimately return?</p>
         <div class="quiz-options">
@@ -104,7 +104,7 @@ def detail(request, pk):
         <p class="quiz-explanation">A view receives a request and returns a response. That response may contain rendered HTML, but it can also be a redirect, error, JSON payload, image, or another response type.</p>
       </div>
 
-      <div class="quiz" data-quiz>
+      <div data-qid="q3" class="quiz" data-quiz>
         <div class="quiz-label">Question 3 of 3</div>
         <p class="quiz-question">What happens after the first URL pattern matches?</p>
         <div class="quiz-options">
@@ -122,7 +122,7 @@ def detail(request, pk):
       <div class="eyebrow">Make it stick</div>
       <h2>Close the page and explain it</h2>
       <p>Without looking back, write four or five sentences that answer: <em>“What happens when a user requests <code>/jobs/42/</code>?”</em> Name at least four stages and one possible alternative to rendering HTML.</p>
-      <textarea aria-label="Your explanation of the Django request lifecycle" placeholder="Write your explanation here before revealing the model answer..."></textarea>
+      <textarea data-qid="t1" aria-label="Your explanation of the Django request lifecycle" placeholder="Write your explanation here before revealing the model answer..."></textarea>
       <details>
         <summary>Reveal a model answer</summary>
         <p>Django passes the request through middleware, then checks the root URLconf in order. The matching pattern captures <code>pk=42</code> and calls the detail view with the request and that value. The view queries the ORM and may render a template, return a redirect, or produce an error response. The resulting response travels back through middleware to the client.</p>

@@ -88,7 +88,7 @@ $ false || echo no    # no   (|| runs only after failure)</pre></div>
   <section>
     <h2>Check yourself</h2>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q1" class="quiz" data-quiz>
       <div class="quiz-label">Quiz 1</div>
       <p class="quiz-question">What does the shell actually do when you type <code>echo hello</code>?</p>
       <div class="quiz-options">
@@ -101,7 +101,7 @@ $ false || echo no    # no   (|| runs only after failure)</pre></div>
       <div class="quiz-explanation">The first word names a program the shell finds via <code>$PATH</code>; the remaining words are passed to that program as arguments. <code>echo</code> then happens to print them.</div>
     </div>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q2" class="quiz" data-quiz>
       <div class="quiz-label">Quiz 2</div>
       <p class="quiz-question">How does the shell find the program for a command like <code>date</code>?</p>
       <div class="quiz-options">
@@ -114,7 +114,7 @@ $ false || echo no    # no   (|| runs only after failure)</pre></div>
       <div class="quiz-explanation"><code>$PATH</code> is a <code>:</code>-separated list of directories. The shell tries each in order until it finds an executable file with that name; <code>which date</code> shows the winner.</div>
     </div>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q3" class="quiz" data-quiz>
       <div class="quiz-label">Quiz 3</div>
       <p class="quiz-question">What does the pipe in <code>grep TODO notes.md | wc -l</code> do?</p>
       <div class="quiz-options">

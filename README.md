@@ -42,10 +42,12 @@ Static site, no framework, deployed as a Cloudflare Worker with static assets. E
 Quiz answers and saved free-text answers from the phone are stored in a Cloudflare D1 database, so an agent on the laptop can read them.
 
 - `assets/progress.js` (loaded on every lesson and reference page) queues each answer in localStorage and POSTs it to `/api/answers`. Answers made without a token or offline stay queued and upload later. The cloud button in the top bar shows the state (grey: no token, accent: waiting, green: synced, red: token rejected); tap it to set the token once per device.
-- `worker/index.js` handles `POST /api/answers` (bearer token = `SYNC_TOKEN` secret) and serves everything else from `dist/`. There is no read endpoint.
+- `worker/index.js` handles `POST /api/answers` and `GET /api/progress` (both need bearer token = `SYNC_TOKEN` secret) and serves everything else from `dist/`. `/api/progress` returns only per-lesson counts (questions answered, first attempts wrong); full answers are never readable over HTTP.
+- Index pages show synced progress on each lesson row (`3/9`, `9/9 ✓`, `· 2 wrong`) and course card, using question counts the build writes into `data-total`. The last result is cached on the device.
+- `build_index.py` prints answer-sync warnings for quizzes or text boxes without a unique `data-qid` and for course scripts that never fire `quiz:answered`.
 - `migrations/` holds the schema: one append-only `attempts` table (`course`, `lesson`, `qid`, `kind` mcq/text, `question`, `answer`, `correct`, `answered_at`, `reviewed_at`).
 
-**Writing lessons:** quiz scripts must fire the event below after an answer; the existing course scripts already do. `qid` defaults to the quiz's position on the page (`q1`, `q2`…); set `data-qid` on a quiz to keep its id stable if quizzes get reordered. Every `<textarea>` gets a "Save answer" button automatically (`t1`, `t2`… or `data-qid`).
+**Writing lessons:** see [CLAUDE.md](CLAUDE.md). In short: every quiz and `<textarea>` has a `data-qid` that never changes once published, and quiz scripts fire the event below after an answer (the existing course scripts already do). Every `<textarea>` gets a "Save answer" button automatically.
 
 ```js
 quiz.dispatchEvent(new CustomEvent("quiz:answered", { bubbles: true,

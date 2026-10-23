@@ -28,7 +28,7 @@
   <section>
     <h2>Warm-up — two gaps from last time</h2>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q1" class="quiz" data-quiz>
       <div class="quiz-label">Recall 1</div>
       <p class="quiz-question">Why does <code>which cd</code> print nothing?</p>
       <div class="quiz-options">
@@ -41,7 +41,7 @@
       <div class="quiz-explanation"><code>which</code> only searches <code>$PATH</code> for files. A separate <code>cd</code> program would change <em>its own</em> directory, exit, and leave your shell where it was — so bash implements <code>cd</code> itself. <code>type cd</code> confirms it. Today's mental model is the general rule behind this.</div>
     </div>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q2" class="quiz" data-quiz>
       <div class="quiz-label">Recall 2</div>
       <p class="quiz-question">What does <code>false &amp;&amp; echo yes; false || echo no</code> print?</p>
       <div class="quiz-options">
@@ -125,7 +125,7 @@ set -euo pipefail</pre></div>
   <section>
     <h2>Check yourself</h2>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q3" class="quiz" data-quiz>
       <div class="quiz-label">Quiz 1</div>
       <p class="quiz-question">You run <code>APP_ENV=staging</code> (no export), then <code>python app.py</code>. What does the Python program see for <code>APP_ENV</code>?</p>
       <div class="quiz-options">
@@ -138,7 +138,7 @@ set -euo pipefail</pre></div>
       <div class="quiz-explanation">Only <em>exported</em> variables are copied into children. Fix with <code>export APP_ENV=staging</code>, or one-shot: <code>APP_ENV=staging python app.py</code>.</div>
     </div>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q4" class="quiz" data-quiz>
       <div class="quiz-label">Quiz 2</div>
       <p class="quiz-question"><code>setup.sh</code> contains <code>cd /tmp</code> and <code>export DEBUG=1</code>. After <code>./setup.sh</code>, where is your shell and what is <code>$DEBUG</code>?</p>
       <div class="quiz-options">
@@ -151,7 +151,7 @@ set -euo pipefail</pre></div>
       <div class="quiz-explanation"><code>./setup.sh</code> runs in a child; its <code>cd</code> and <code>export</code> die with it. <code>source setup.sh</code> would give "in /tmp, DEBUG is 1".</div>
     </div>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q5" class="quiz" data-quiz>
       <div class="quiz-label">Quiz 3</div>
       <p class="quiz-question">Without <code>set -o pipefail</code>, what is <code>$?</code> after <code>false | true</code>?</p>
       <div class="quiz-options">

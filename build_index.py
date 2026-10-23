@@ -6,6 +6,9 @@ and scripts (site.js, progress.js answer sync), a sticky top bar and prev/next n
 Prefixes lesson and reference <title> tags with TITLE_PREFIX and generates
 index.html for the site root and each course. A course is any top-level folder
 containing a lessons/ directory.
+Checks answer-sync wiring and prints warnings: every quiz and <textarea> needs a
+unique data-qid, and every course script that handles quizzes must fire quiz:answered.
+Index rows carry each lesson's question count so progress.js can show synced progress.
 Run after adding lessons:  python build_index.py
 Stdlib only, so it also runs as the Cloudflare build command.
 """
@@ -13,6 +16,7 @@ Stdlib only, so it also runs as the Cloudflare build command.
 import html
 import re
 import shutil
+from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -36,6 +40,43 @@ ICON = {
 THEME_BOOT = '<script>try{var t=JSON.parse(localStorage.getItem("learning:theme"));if(t)document.documentElement.dataset.theme=t}catch(e){}</script>'
 
 e = lambda s: html.escape(str(s), quote=True)
+WARNINGS = []
+
+
+class QuestionScan(HTMLParser):
+    """Collects the answerable items on a page as (tag, data-qid) pairs: quiz
+    containers (data-quiz attribute or a "quiz" class) and textareas."""
+
+    def __init__(self):
+        super().__init__()
+        self.items = []
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == "textarea" or "data-quiz" in a or "quiz" in (a.get("class") or "").split():
+            self.items.append((tag, a.get("data-qid")))
+
+
+def scan_questions(path):
+    """Return the page's question count, recording a warning for missing or duplicate data-qid."""
+    scan = QuestionScan()
+    scan.feed(path.read_text(encoding="utf-8"))
+    seen = set()
+    for tag, qid in scan.items:
+        if not qid:
+            WARNINGS.append(f"{path.relative_to(ROOT)}: <{tag}> quiz/answer box without data-qid")
+        elif qid in seen:
+            WARNINGS.append(f"{path.relative_to(ROOT)}: duplicate data-qid=\"{qid}\"")
+        seen.add(qid)
+    return len(scan.items)
+
+
+def check_quiz_scripts(course):
+    """Every course script that handles quizzes must report answers to assets/progress.js."""
+    for script in sorted((course / "assets").glob("*.js")) if (course / "assets").is_dir() else []:
+        text = script.read_text(encoding="utf-8")
+        if re.search(r"quiz", text, re.I) and "quiz:answered" not in text:
+            WARNINGS.append(f"{script.relative_to(ROOT)}: handles quizzes but never fires quiz:answered")
 
 
 def head_bits(rel):
@@ -48,9 +89,8 @@ def top_bar(back_href, back_label, title, sub, progress=False):
             if back_href else '<span class="sx-pad"></span>')
     sub_html = f'<span><i class="sx-dot"></i>{e(sub)}</span>' if sub else ""
     bar = '<div class="sx-progress"><span></span></div>' if progress else ""
-    # Lesson and reference pages get the answer-sync status button (assets/progress.js).
-    sync = (f'<button class="sx-icon sx-sync" type="button" data-sx-sync aria-label="Answer sync">{ICON["sync"]}</button>'
-            if progress else "")
+    # Answer-sync status button, driven by assets/progress.js.
+    sync = f'<button class="sx-icon sx-sync" type="button" data-sx-sync aria-label="Answer sync">{ICON["sync"]}</button>'
     return (f'<header class="sx-bar">{back}<div class="sx-where"><b>{e(title)}</b>{sub_html}</div>{sync}'
             f'<button class="sx-icon" type="button" data-sx-theme aria-label="Toggle dark mode">{ICON["theme"]}</button>{bar}</header>')
 
@@ -64,6 +104,7 @@ def page(title, body, rel="", course=None):
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{e(title)}</title>
 {head_bits(rel)}<script src="{rel}assets/site.js" defer></script>
+<script src="{rel}assets/progress.js" defer></script>
 </head>
 <body>
 {body}
@@ -112,7 +153,7 @@ def wire_page(path, *, course, course_title, section, items, index):
     where = f"Lesson {index + 1} of {len(items)}" if section == "lessons" else "Reference"
 
     text = TITLE_RE.sub(lambda m: f"<title>{e(TITLE_PREFIX)}{m.group(1).strip()}</title>", text, count=1)
-    text = re.sub(r"<html\b", f'<html data-course="{e(course)}"', text, count=1)
+    text = re.sub(r"<html\b", f'<html data-course="{e(course)}" data-lesson="{e(path.stem)}"', text, count=1)
     # Shared stylesheet goes first so the course stylesheet can override it.
     first_css = re.search(r'<link[^>]+rel="stylesheet"', text)
     at = first_css.start() if first_css else text.lower().index("</head>")
@@ -137,9 +178,12 @@ def wire_page(path, *, course, course_title, section, items, index):
     path.write_text(text, encoding="utf-8", newline="")
 
 
-def row(href, label, badge):
-    return (f'<li><a class="sx-lesson" href="{e(href)}"><span class="sx-num">{badge}</span>'
-            f'<b>{e(label)}</b>{ICON["chev"]}</a></li>')
+def row(href, label, badge, progress_key=None, total=0):
+    # progress.js fills .sx-score from /api/progress for rows that have questions.
+    attrs = f' data-progress="{e(progress_key)}" data-total="{total}"' if total else ""
+    score = '<span class="sx-score" hidden></span>' if total else ""
+    return (f'<li><a class="sx-lesson" href="{e(href)}"{attrs}><span class="sx-num">{badge}</span>'
+            f'<b>{e(label)}</b>{score}{ICON["chev"]}</a></li>')
 
 
 def build_course(course):
@@ -147,11 +191,15 @@ def build_course(course):
     out = DIST / course.name
     shutil.copytree(course, out, ignore=REPO_ONLY)
 
+    check_quiz_scripts(course)
     sections = {}
+    totals = {}
     for section in SECTIONS:
         files = sorted((course / section).glob("*.html")) if (course / section).is_dir() else []
         items = [(f.name, html_title(f)) for f in files]
         sections[section] = (files, items)
+        if section == "lessons":
+            totals = {f.name: scan_questions(f) for f in files}
         for i in range(len(items)):
             wire_page(out / section / items[i][0], course=course.name, course_title=title,
                       section=section, items=items, index=i)
@@ -166,7 +214,8 @@ def build_course(course):
     ]
     if lessons:
         parts.append('<h2 class="sx-h">Lessons</h2><ul class="sx-list">')
-        parts += [row(f"lessons/{name}", short_title(t), str(lesson_number(f, i + 1)))
+        parts += [row(f"lessons/{name}", short_title(t), str(lesson_number(f, i + 1)),
+                      f"{course.name}/{f.stem}", totals[name])
                   for i, (f, (name, t)) in enumerate(zip(lessons, lesson_items))]
         parts.append("</ul>")
     if refs:
@@ -181,7 +230,7 @@ def build_course(course):
     parts.append("</main>")
     (out / "index.html").write_text(page(TITLE_PREFIX + title, "\n".join(parts), rel="../", course=course.name),
                                     encoding="utf-8")
-    return title, summary, len(lessons), len(refs)
+    return title, summary, len(lessons), len(refs), sum(totals.values())
 
 
 def main():
@@ -191,12 +240,14 @@ def main():
     courses = sorted(d for d in ROOT.iterdir() if d != DIST and (d / "lessons").is_dir())
     cards = []
     for course in courses:
-        title, summary, n_lessons, n_refs = build_course(course)
+        title, summary, n_lessons, n_refs, n_questions = build_course(course)
         counts = f"{n_lessons} lesson{'s' if n_lessons != 1 else ''}" + (f" · {n_refs} ref{'s' if n_refs != 1 else ''}" if n_refs else "")
+        progress = (f' data-progress="{e(course.name)}" data-total="{n_questions}"' if n_questions else "")
+        score = '<span class="sx-score" hidden></span>' if n_questions else ""
         cards.append(
-            f'<li><a class="sx-course" data-course="{e(course.name)}" href="{e(course.name)}/index.html">'
+            f'<li><a class="sx-course" data-course="{e(course.name)}" href="{e(course.name)}/index.html"{progress}>'
             f"<b>{e(title)}</b>" + (f"<p>{e(summary)}</p>" if summary else "")
-            + f'<div class="sx-stats">{counts}</div></a></li>')
+            + f'<div class="sx-stats">{counts}{score}</div></a></li>')
     body = "\n".join([
         top_bar(None, "", "Learning", ""),
         '<main class="sx-index">',
@@ -207,6 +258,9 @@ def main():
     ])
     (DIST / "index.html").write_text(page("Learning", body), encoding="utf-8")
     print(f"Built {len(courses)} courses into {DIST.name}/.")
+    if WARNINGS:
+        print(f"\n{len(WARNINGS)} answer-sync warning{'s' if len(WARNINGS) != 1 else ''} (answers from these won't sync correctly):")
+        print("\n".join(f"  - {w}" for w in WARNINGS))
 
 
 if __name__ == "__main__":

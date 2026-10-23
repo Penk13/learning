@@ -1,8 +1,10 @@
 /* Learning site Worker: serves dist/ as static assets and accepts quiz answers.
+ * Both endpoints need header  Authorization: Bearer <SYNC_TOKEN>.
  *
- * POST /api/answers  { attempts: [...] }  with header  Authorization: Bearer <SYNC_TOKEN>
- * Inserts into D1 (binding DB). Nothing is readable over HTTP; read with
- * `wrangler d1 execute learning --remote` instead. */
+ * POST /api/answers   { attempts: [...] }  inserts into D1 (binding DB).
+ * GET  /api/progress  per-lesson counts only: { lessons: [{ course, lesson, answered, wrong }] },
+ *                     judged on each question's first attempt. Full answers are read with
+ *                     `wrangler d1 execute learning --remote`, never over HTTP. */
 
 const MAX_BATCH = 50;
 const LIMITS = { client_id: 64, course: 100, lesson: 200, qid: 100, question: 4000, answer: 10000 };
@@ -54,15 +56,33 @@ async function saveAnswers(request, env) {
   return json({ saved: attempts.map((a) => a.client_id) });
 }
 
+async function readProgress(request, env) {
+  if (!(await authorized(request, env))) return json({ error: "unauthorized" }, 401);
+  const { results } = await env.DB.prepare(
+    `WITH firsts AS (
+       SELECT course, lesson, correct,
+              ROW_NUMBER() OVER (PARTITION BY course, lesson, qid ORDER BY answered_at, id) AS n
+       FROM attempts)
+     SELECT course, lesson, COUNT(*) AS answered, COALESCE(SUM(correct = 0), 0) AS wrong
+     FROM firsts WHERE n = 1 GROUP BY course, lesson`).all();
+  return json({ lessons: results });
+}
+
+const ROUTES = {
+  "/api/answers": { method: "POST", handler: saveAnswers },
+  "/api/progress": { method: "GET", handler: readProgress },
+};
+
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
-    if (pathname === "/api/answers") {
-      if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
+    const route = ROUTES[pathname];
+    if (route) {
+      if (request.method !== route.method) return json({ error: "method not allowed" }, 405);
       try {
-        return await saveAnswers(request, env);
+        return await route.handler(request, env);
       } catch (err) {
-        console.error("saveAnswers failed", err);
+        console.error(`${pathname} failed`, err);
         return json({ error: "server error" }, 500);
       }
     }

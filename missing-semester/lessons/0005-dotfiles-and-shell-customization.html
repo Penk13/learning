@@ -140,7 +140,7 @@ bash install.sh</pre></div>
   <section>
     <h2>Check yourself</h2>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q1" class="quiz" data-quiz>
       <div class="quiz-label">Quiz 1</div>
       <p class="quiz-question">You add <code>alias gs="git status"</code> to <code>~/.bashrc</code> but <code>gs</code> says "command not found" in the same terminal. Why?</p>
       <div class="quiz-options">
@@ -153,7 +153,7 @@ bash install.sh</pre></div>
       <div class="quiz-explanation">Startup files are read once, at startup. Editing the file doesn't change a shell that's already running until you source it again.</div>
     </div>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q2" class="quiz" data-quiz>
       <div class="quiz-label">Quiz 2</div>
       <p class="quiz-question">An install guide says <code>export PATH="/opt/tool/bin"</code>. What goes wrong?</p>
       <div class="quiz-options">
@@ -166,7 +166,7 @@ bash install.sh</pre></div>
       <div class="quiz-explanation">Keep the existing list: <code>export PATH="$PATH:/opt/tool/bin"</code>.</div>
     </div>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q3" class="quiz" data-quiz>
       <div class="quiz-label">Quiz 3</div>
       <p class="quiz-question">You want <code>mkcd foo</code> to create <code>foo</code> and move into it. Which works?</p>
       <div class="quiz-options">
@@ -179,7 +179,7 @@ bash install.sh</pre></div>
       <div class="quiz-explanation">Aliases can't use arguments in the middle. A script runs in a child, so its <code>cd</code> is lost. A function takes arguments <em>and</em> runs in your current shell.</div>
     </div>
 
-    <div class="quiz" data-quiz>
+    <div data-qid="q4" class="quiz" data-quiz>
       <div class="quiz-label">Quiz 4</div>
       <p class="quiz-question">What belongs in a public dotfiles repo?</p>
       <div class="quiz-options">

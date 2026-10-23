@@ -463,7 +463,7 @@ Flash is written per page (~4 KiB) but erased only per block (~512 KiB). Random 
 <h2 id="practice">9 · Practice: answer from memory</h2>
 <p class="muted">Scrolling up to check is cheating yourself. Recalling the answer now, with effort, is what makes it stick. <span class="score" data-quiz-score></span></p>
 
-<div class="quiz" data-answer="1">
+<div data-qid="q1" class="quiz" data-answer="1">
   <div class="q">1. You add three new secondary indexes to a busy table. What is the main cost?</div>
   <div class="opts">
     <button class="opt">Point reads become slower overall</button>
@@ -474,7 +474,7 @@ Flash is written per page (~4 KiB) but erased only per block (~512 KiB). Random 
   <div class="why">Indexes are derived data: they speed up the reads they serve, but use disk space and add work to every insert, update and delete.</div>
 </div>
 
-<div class="quiz" data-answer="3">
+<div data-qid="q2" class="quiz" data-answer="3">
   <div class="q">2. In an LSM-tree, where does a new write go first (besides the crash-recovery log)?</div>
   <div class="opts">
     <button class="opt">The oldest SSTable on disk</button>
@@ -485,7 +485,7 @@ Flash is written per page (~4 KiB) but erased only per block (~512 KiB). Random 
   <div class="why">Writes go to the memtable (and the log). When it's full it's flushed as a new immutable SSTable; background compaction merges segments later.</div>
 </div>
 
-<div class="quiz" data-answer="0">
+<div data-qid="q3" class="quiz" data-answer="0">
   <div class="q">3. A segment's Bloom filter says a key is "probably present". What follows?</div>
   <div class="opts">
     <button class="opt">Read the block; it may be a false positive</button>
@@ -496,7 +496,7 @@ Flash is written per page (~4 KiB) but erased only per block (~512 KiB). Random 
   <div class="why">"All bits 1" may be a coincidence caused by other keys. You check the block; if it's a false positive you just keep searching older segments. A 0 bit would mean "definitely absent".</div>
 </div>
 
-<div class="quiz" data-answer="2">
+<div data-qid="q4" class="quiz" data-answer="2">
   <div class="q">4. Why does a B-tree need a write-ahead log?</div>
   <div class="opts">
     <button class="opt">To keep its pages sorted by key</button>
@@ -507,7 +507,7 @@ Flash is written per page (~4 KiB) but erased only per block (~512 KiB). Random 
   <div class="why">B-trees overwrite pages in place. A crash during a multi-page split leaves orphan or torn pages. Changes are written to the WAL first, then replayed after a crash.</div>
 </div>
 
-<div class="quiz" data-answer="1">
+<div data-qid="q5" class="quiz" data-answer="1">
   <div class="q">5. A sensor platform ingests huge volumes of writes and reads rarely. Which engine is the safer first bet?</div>
   <div class="opts">
     <button class="opt">B-tree with leveled page splits</button>
@@ -518,7 +518,7 @@ Flash is written per page (~4 KiB) but erased only per block (~512 KiB). Random 
   <div class="why">LSM-trees turn writes into big sequential writes with lower write amplification; size-tiered compaction favours write throughput. Still: benchmark with your real workload.</div>
 </div>
 
-<div class="quiz" data-answer="3">
+<div data-qid="q6" class="quiz" data-answer="3">
   <div class="q">6. Why can in-memory databases beat disk-based ones even when the disk DB's data is all in the OS cache?</div>
   <div class="opts">
     <button class="opt">They never write anything to disk</button>
@@ -529,7 +529,7 @@ Flash is written per page (~4 KiB) but erased only per block (~512 KiB). Random 
   <div class="why">The speed-up comes from avoiding the overhead of encoding in-memory structures into an on-disk format. Many still write a log or snapshots to disk for durability.</div>
 </div>
 
-<div class="quiz" data-answer="0">
+<div data-qid="q7" class="quiz" data-answer="0">
   <div class="q">7. A report query uses 4 of a fact table's 150 columns over 2 billion rows. Why is a column store faster?</div>
   <div class="opts">
     <button class="opt">It reads only the 4 needed columns</button>
@@ -540,7 +540,7 @@ Flash is written per page (~4 KiB) but erased only per block (~512 KiB). Random 
   <div class="why">Values of each column are stored together, so the query skips the other 146 columns. Columns also compress well (bitmaps, RLE). Columns are never sorted independently, or rows couldn't be rebuilt.</div>
 </div>
 
-<div class="quiz" data-answer="2">
+<div data-qid="q8" class="quiz" data-answer="2">
   <div class="q">8. An index on (last_name, first_name) exists. Which query can it NOT serve efficiently?</div>
   <div class="opts">
     <button class="opt">All people with last name Wijaya</button>
@@ -551,7 +551,7 @@ Flash is written per page (~4 KiB) but erased only per block (~512 KiB). Random 
   <div class="why">A concatenated index is sorted by the first field, then the second. Like a phone book, it can't find everyone with a given first name without scanning.</div>
 </div>
 
-<div class="quiz" data-answer="1">
+<div data-qid="q9" class="quiz" data-answer="1">
   <div class="q">9. A help-desk search should find "reset my password" when users type "can't log in". What index fits?</div>
   <div class="opts">
     <button class="opt">A trigram index on the ticket text</button>

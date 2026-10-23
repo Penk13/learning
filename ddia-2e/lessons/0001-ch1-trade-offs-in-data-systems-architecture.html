@@ -336,7 +336,7 @@ Schedule = OLTP (point query by key, latest state, end user). Registrations per 
 <h2 id="practice">8 · Practice — answer from memory</h2>
 <p class="muted">Scroll up = cheating yourself. <span class="score" data-quiz-score></span></p>
 
-<div class="quiz" data-answer="2">
+<div data-qid="q1" class="quiz" data-answer="2">
   <div class="q">1. "Fetch this student's current grades by student ID." Which access pattern is this?</div>
   <div class="opts">
     <button class="opt">Analytical aggregate over history</button>
@@ -347,7 +347,7 @@ Schedule = OLTP (point query by key, latest state, end user). Registrations per 
   <div class="why">A few records, looked up by key, latest state, for an end user = OLTP point query.</div>
 </div>
 
-<div class="quiz" data-answer="0">
+<div data-qid="q2" class="quiz" data-answer="0">
   <div class="q">2. Which is NOT a reason the book gives for a separate data warehouse?</div>
   <div class="opts">
     <button class="opt">OLTP databases cannot run SQL queries</button>
@@ -358,7 +358,7 @@ Schedule = OLTP (point query by key, latest state, end user). Registrations per 
   <div class="why">SQL works fine for both — that's why the same DB was used for both at first. The reasons are silos, unsuitable layouts, performance impact and access restrictions.</div>
 </div>
 
-<div class="quiz" data-answer="3">
+<div data-qid="q3" class="quiz" data-answer="3">
   <div class="q">3. The search index says a course has 30 seats; the main database says 28. Which is correct?</div>
   <div class="opts">
     <button class="opt">The search index, it is newer</button>
@@ -369,7 +369,7 @@ Schedule = OLTP (point query by key, latest state, end user). Registrations per 
   <div class="why">If derived data disagrees with the system of record, the system of record is right by definition. Rebuild the index from it.</div>
 </div>
 
-<div class="quiz" data-answer="1">
+<div data-qid="q4" class="quiz" data-answer="1">
   <div class="q">4. What's the key difference between a data lake and a data warehouse?</div>
   <div class="opts">
     <button class="opt">A lake stores only operational records</button>
@@ -380,7 +380,7 @@ Schedule = OLTP (point query by key, latest state, end user). Registrations per 
   <div class="why">Warehouse = relational schema, SQL. Lake = just files in any format (Parquet, text, images…), cheaper, raw ("sushi principle").</div>
 </div>
 
-<div class="quiz" data-answer="2">
+<div data-qid="q5" class="quiz" data-answer="2">
   <div class="q">5. Your team knows the database well and its load is steady all year. The book's rule of thumb suggests…</div>
   <div class="opts">
     <button class="opt">Cloud is always the cheaper option</button>
@@ -391,7 +391,7 @@ Schedule = OLTP (point query by key, latest state, end user). Registrations per 
   <div class="why">Existing skills + predictable load → buying and running your own machines is often cheaper. Cloud shines for variable load or unfamiliar systems.</div>
 </div>
 
-<div class="quiz" data-answer="0">
+<div data-qid="q6" class="quiz" data-answer="0">
   <div class="q">6. Why do cloud native databases treat a VM's local disk as only a cache?</div>
   <div class="opts">
     <button class="opt">It's lost if the instance fails or moves</button>
@@ -402,7 +402,7 @@ Schedule = OLTP (point query by key, latest state, end user). Registrations per 
   <div class="why">When an instance dies or is replaced by a bigger/smaller one on another machine, its local disk is gone. Durable data goes to a separate storage service.</div>
 </div>
 
-<div class="quiz" data-answer="1">
+<div data-qid="q7" class="quiz" data-answer="1">
   <div class="q">7. According to the book, microservices are primarily…</div>
   <div class="opts">
     <button class="opt">A way to make each request faster</button>
@@ -413,7 +413,7 @@ Schedule = OLTP (point query by key, latest state, end user). Registrations per 
   <div class="why">They let many teams progress independently. With few teams, they're often unnecessary overhead.</div>
 </div>
 
-<div class="quiz" data-answer="3">
+<div data-qid="q8" class="quiz" data-answer="3">
   <div class="q">8. A request to another service times out. What do you actually know?</div>
   <div class="opts">
     <button class="opt">The request was never received</button>

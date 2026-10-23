@@ -518,7 +518,7 @@ GraphQL deliberately forbids arbitrary search conditions and recursive queries (
 <h2 id="practice">10 · Practice: answer from memory</h2>
 <p class="muted">Scrolling up to check is cheating yourself. Recalling the answer now, with effort, is what makes it stick. <span class="score" data-quiz-score></span></p>
 
-<div class="quiz" data-answer="2">
+<div data-qid="q1" class="quiz" data-answer="2">
   <div class="q">1. A student profile with addresses, emergency contacts and study history, always loaded whole on one page. Which model fits most naturally?</div>
   <div class="opts">
     <button class="opt">A property graph database</button>
@@ -529,7 +529,7 @@ GraphQL deliberately forbids arbitrary search conditions and recursive queries (
   <div class="why">A tree of one-to-many (one-to-few) relationships loaded at once fits documents: better locality, no shredding into many tables.</div>
 </div>
 
-<div class="quiz" data-answer="0">
+<div data-qid="q2" class="quiz" data-answer="0">
   <div class="q">2. Your ORM page runs 1 query for 200 comments, then 200 more for authors. Best fix?</div>
   <div class="opts">
     <button class="opt">Join or eager-load the authors</button>
@@ -540,7 +540,7 @@ GraphQL deliberately forbids arbitrary search conditions and recursive queries (
   <div class="why">That's the N+1 query problem. Do the join in the database (or tell the ORM to fetch authors with the comments): 1 round trip instead of 201.</div>
 </div>
 
-<div class="quiz" data-answer="3">
+<div data-qid="q3" class="quiz" data-answer="3">
   <div class="q">3. Which statement about normalized data is generally true?</div>
   <div class="opts">
     <button class="opt">Faster reads, slower writes overall</button>
@@ -551,7 +551,7 @@ GraphQL deliberately forbids arbitrary search conditions and recursive queries (
   <div class="why">One copy makes writes cheap and consistent. Reads must resolve IDs with joins. Denormalized is the reverse, and analytics usually favours it.</div>
 </div>
 
-<div class="quiz" data-answer="1">
+<div data-qid="q4" class="quiz" data-answer="1">
   <div class="q">4. X's materialized timelines store only post and sender IDs. Why not the post text and like count?</div>
   <div class="opts">
     <button class="opt">Joins are impossible at that scale</button>
@@ -562,7 +562,7 @@ GraphQL deliberately forbids arbitrary search conditions and recursive queries (
   <div class="why">Like counts and profiles change constantly, and copying them into every timeline wastes storage. IDs are hydrated at read time, which parallelizes well.</div>
 </div>
 
-<div class="quiz" data-answer="2">
+<div data-qid="q5" class="quiz" data-answer="2">
   <div class="q">5. Dimension tables are themselves split into sub-dimensions (brand, category). This is a…</div>
   <div class="opts">
     <button class="opt">Star schema design</button>
@@ -573,7 +573,7 @@ GraphQL deliberately forbids arbitrary search conditions and recursive queries (
   <div class="why">Snowflake = more normalized star. Star is usually preferred for analyst simplicity. OBT goes the other way and folds dimensions into the fact table.</div>
 </div>
 
-<div class="quiz" data-answer="0">
+<div data-qid="q6" class="quiz" data-answer="0">
   <div class="q">6. "Schemaless" document databases are more accurately described as…</div>
   <div class="opts">
     <button class="opt">Schema-on-read, schema implicit</button>
@@ -584,7 +584,7 @@ GraphQL deliberately forbids arbitrary search conditions and recursive queries (
   <div class="why">Code reading the data still assumes a structure; the DB just doesn't enforce it. Like dynamic typing (vs schema-on-write ≈ static typing).</div>
 </div>
 
-<div class="quiz" data-answer="3">
+<div data-qid="q7" class="quiz" data-answer="3">
   <div class="q">7. Why is "people born in the US who live in Europe" clumsy in plain SQL?</div>
   <div class="opts">
     <button class="opt">SQL cannot join a table to itself</button>
@@ -595,7 +595,7 @@ GraphQL deliberately forbids arbitrary search conditions and recursive queries (
   <div class="why">Each WITHIN hop is a join, and locations nest to varying depth. SQL needs WITH RECURSIVE (31 lines vs 4 in Cypher).</div>
 </div>
 
-<div class="quiz" data-answer="1">
+<div data-qid="q8" class="quiz" data-answer="1">
   <div class="q">8. Why does GraphQL forbid recursive queries and arbitrary search conditions?</div>
   <div class="opts">
     <button class="opt">It only runs on graph databases</button>
@@ -606,7 +606,7 @@ GraphQL deliberately forbids arbitrary search conditions and recursive queries (
   <div class="why">Expensive queries from clients could cause a denial of service. GraphQL is for OLTP UIs and can sit on any database.</div>
 </div>
 
-<div class="quiz" data-answer="2">
+<div data-qid="q9" class="quiz" data-answer="2">
   <div class="q">9. A bug in a view's code corrupted it. In event sourcing, how do you recover?</div>
   <div class="opts">
     <button class="opt">Edit the events already in the log</button>

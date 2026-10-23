@@ -89,7 +89,7 @@ function ProductList({ products }) {
       <div class="eyebrow">Check your understanding</div>
       <h2>Answer before reading the explanation</h2>
 
-      <div class="quiz" data-quiz>
+      <div data-qid="q1" class="quiz" data-quiz>
         <div class="quiz-label">Question 1 of 4</div>
         <p class="quiz-question">What does <code>map()</code> return?</p>
         <div class="quiz-options">
@@ -102,7 +102,7 @@ function ProductList({ products }) {
         <p class="quiz-explanation"><code>map()</code> creates a new array containing the callback's return value for each source item; it does not itself return one element.</p>
       </div>
 
-      <div class="quiz" data-quiz>
+      <div data-qid="q2" class="quiz" data-quiz>
         <div class="quiz-label">Question 2 of 4</div>
         <p class="quiz-question">What should a <code>key</code> identify?</p>
         <div class="quiz-options">
@@ -115,7 +115,7 @@ function ProductList({ products }) {
         <p class="quiz-explanation">A key gives React stable identity for an item among its siblings. A persistent ID from the data is usually the right source.</p>
       </div>
 
-      <div class="quiz" data-quiz>
+      <div data-qid="q3" class="quiz" data-quiz>
         <div class="quiz-label">Question 3 of 4</div>
         <p class="quiz-question">What does object spread create?</p>
         <div class="quiz-options">
@@ -128,7 +128,7 @@ function ProductList({ products }) {
         <p class="quiz-explanation">Object spread copies enumerable own properties into a new object, but nested objects still share references; it is shallow, not a deep clone or freeze.</p>
       </div>
 
-      <div class="quiz" data-quiz>
+      <div data-qid="q4" class="quiz" data-quiz>
         <div class="quiz-label">Question 4 of 4</div>
         <p class="quiz-question">What does destructuring do?</p>
         <div class="quiz-options">
@@ -146,7 +146,7 @@ function ProductList({ products }) {
       <div class="eyebrow">Make it stick</div>
       <h2>Give the interview answer from memory</h2>
       <p>Without looking back, write three or four sentences answering: <em>“How would you render a list of products in React, and how would you choose the key?”</em> Mention <code>map()</code>, one JavaScript concept, and one key pitfall.</p>
-      <textarea aria-label="Your explanation of React list rendering" placeholder="Write your answer here before revealing the model answer..."></textarea>
+      <textarea data-qid="t1" aria-label="Your explanation of React list rendering" placeholder="Write your answer here before revealing the model answer..."></textarea>
       <details>
         <summary>Reveal a model answer</summary>
         <p>“I keep products in an array and use <code>map()</code> to transform each product into an <code>&lt;li&gt;</code>, using destructuring or property access to read its fields. I give each list element a stable key from the product’s persistent ID, not the array index or a random value, because React uses the key to match items when the collection changes. If the list is in state, I use non-mutating methods or spread to create the next array.”</p>

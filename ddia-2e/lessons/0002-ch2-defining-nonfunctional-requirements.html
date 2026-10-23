@@ -330,7 +330,7 @@ Software faults. Extra replicas run the same code, so they share the same bug an
 <h2 id="practice">7 · Practice — answer from memory</h2>
 <p class="muted">Scroll up = cheating yourself. Effortful recall now is what makes this stick next month. <span class="score" data-quiz-score></span></p>
 
-<div class="quiz" data-answer="0">
+<div data-qid="q1" class="quiz" data-answer="0">
   <div class="q">1. One disk in a 3-node database cluster dies. Users notice nothing. This was…</div>
   <div class="opts">
     <button class="opt">A fault, not a failure</button>
@@ -341,7 +341,7 @@ Software faults. Extra replicas run the same code, so they share the same bug an
   <div class="why">A component stopped working (fault), but the system still met its SLO, so no failure. Fault tolerance worked.</div>
 </div>
 
-<div class="quiz" data-answer="2">
+<div data-qid="q2" class="quiz" data-answer="2">
   <div class="q">2. Which faults most often take down many nodes at once?</div>
   <div class="opts">
     <button class="opt">Random hardware faults</button>
@@ -352,7 +352,7 @@ Software faults. Extra replicas run the same code, so they share the same bug an
   <div class="why">Software faults are highly correlated: every node runs the same code and meets the same trigger (e.g. the 2012 leap second).</div>
 </div>
 
-<div class="quiz" data-answer="1">
+<div data-qid="q3" class="quiz" data-answer="1">
   <div class="q">3. p50 = 200 ms, p99 = 1.5 s. What does the p99 tell you?</div>
   <div class="opts">
     <button class="opt">Average request takes about 1.5s</button>
@@ -363,7 +363,7 @@ Software faults. Extra replicas run the same code, so they share the same bug an
   <div class="why">99 of 100 requests are faster than 1.5 s; 1 in 100 takes 1.5 s or longer. That's the tail.</div>
 </div>
 
-<div class="quiz" data-answer="3">
+<div data-qid="q4" class="quiz" data-answer="3">
   <div class="q">4. A page makes 10 parallel backend calls; each has a 1% chance of being slow. Roughly what share of pages are slow?</div>
   <div class="opts">
     <button class="opt">About 0.1%</button>
@@ -374,7 +374,7 @@ Software faults. Extra replicas run the same code, so they share the same bug an
   <div class="why">1 − 0.99¹⁰ ≈ 9.6%. Tail latency amplification: the page waits for its slowest call.</div>
 </div>
 
-<div class="quiz" data-answer="0">
+<div data-qid="q5" class="quiz" data-answer="0">
   <div class="q">5. In the book's case study, why materialize home timelines instead of polling a join?</div>
   <div class="opts">
     <button class="opt">~1M writes/s beats ~400M lookups/s</button>
@@ -385,7 +385,7 @@ Software faults. Extra replicas run the same code, so they share the same bug an
   <div class="why">5.8k posts/s × 200 followers ≈ 1.16M timeline writes/s, vs 2M polls/s × 200 follows = 400M lookups/s. Pay once at write time; reads become a cache hit.</div>
 </div>
 
-<div class="quiz" data-answer="1">
+<div data-qid="q6" class="quiz" data-answer="1">
   <div class="q">6. You average the p99 of five servers to get a cluster p99. Verdict?</div>
   <div class="opts">
     <button class="opt">Correct, percentiles average cleanly together</button>
@@ -396,7 +396,7 @@ Software faults. Extra replicas run the same code, so they share the same bug an
   <div class="why">Averaging percentiles is mathematically meaningless. Add the underlying histograms, then compute the percentile.</div>
 </div>
 
-<div class="quiz" data-answer="2">
+<div data-qid="q7" class="quiz" data-answer="2">
   <div class="q">7. A service near capacity slows down; clients time out and resend; it stays down even after traffic drops. This is…</div>
   <div class="opts">
     <button class="opt">Head-of-line blocking</button>
@@ -407,7 +407,7 @@ Software faults. Extra replicas run the same code, so they share the same bug an
   <div class="why">Retry storm → metastable failure. Fix with exponential backoff, circuit breakers, load shedding, backpressure.</div>
 </div>
 
-<div class="quiz" data-answer="3">
+<div data-qid="q8" class="quiz" data-answer="3">
   <div class="q">8. Several machines with own CPU/RAM share one SAN disk array. Which architecture?</div>
   <div class="opts">
     <button class="opt">Shared-memory architecture</button>
@@ -418,7 +418,7 @@ Software faults. Extra replicas run the same code, so they share the same bug an
   <div class="why">Independent compute, common storage over a fast network (NAS/SAN) = shared-disk. Locking and contention limit how far it scales.</div>
 </div>
 
-<div class="quiz" data-answer="1">
+<div data-qid="q9" class="quiz" data-answer="1">
   <div class="q">9. You plan a database migration. Which change most improves evolvability?</div>
   <div class="opts">
     <button class="opt">Doing it in one big weekend</button>
