@@ -2,3 +2,7 @@
 Thumbs.db
 desktop.ini
 dist/
+
+# Wrangler local state and secrets
+.wrangler/
+.dev.vars

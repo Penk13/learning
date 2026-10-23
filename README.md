@@ -36,3 +36,35 @@ Static site, no framework, deployed as a Cloudflare Worker with static assets. E
 
 - `assets/` holds the shared, mobile-first design: `site.css` (tokens, light/dark, every common lesson component) and `site.js` (theme toggle, reading progress line, auto-hiding top bar). The build loads `site.css` before each course stylesheet and adds a top bar and prev/next navigation to every lesson and reference page, so lessons need no nav or base styles of their own. Course stylesheets hold only course-specific components.
 - `wrangler.jsonc` holds the Worker config and serves `dist/`. Lessons link to `.md` notes on GitHub.
+
+## Answer sync (D1)
+
+Quiz answers and saved free-text answers from the phone are stored in a Cloudflare D1 database, so an agent on the laptop can read them.
+
+- `assets/progress.js` (loaded on every lesson and reference page) queues each answer in localStorage and POSTs it to `/api/answers`. Answers made without a token or offline stay queued and upload later. The cloud button in the top bar shows the state (grey: no token, accent: waiting, green: synced, red: token rejected); tap it to set the token once per device.
+- `worker/index.js` handles `POST /api/answers` (bearer token = `SYNC_TOKEN` secret) and serves everything else from `dist/`. There is no read endpoint.
+- `migrations/` holds the schema: one append-only `attempts` table (`course`, `lesson`, `qid`, `kind` mcq/text, `question`, `answer`, `correct`, `answered_at`, `reviewed_at`).
+
+**Writing lessons:** quiz scripts must fire the event below after an answer; the existing course scripts already do. `qid` defaults to the quiz's position on the page (`q1`, `q2`…); set `data-qid` on a quiz to keep its id stable if quizzes get reordered. Every `<textarea>` gets a "Save answer" button automatically (`t1`, `t2`… or `data-qid`).
+
+```js
+quiz.dispatchEvent(new CustomEvent("quiz:answered", { bubbles: true,
+  detail: { qid, question, answer, correct } }));
+```
+
+**Agent workflow:** read unreviewed answers, write them into the course's `learning-records/`, then mark them reviewed (needs `npx wrangler login`, Node 22+):
+
+```sh
+npx wrangler d1 execute learning --remote --command "SELECT id, course, lesson, qid, kind, correct, question, answer, answered_at FROM attempts WHERE reviewed_at IS NULL ORDER BY answered_at"
+npx wrangler d1 execute learning --remote --command "UPDATE attempts SET reviewed_at = strftime('%Y-%m-%dT%H:%M:%SZ','now') WHERE reviewed_at IS NULL AND id <= <last id read>"
+```
+
+**One-time setup:**
+
+```sh
+npx wrangler d1 create learning                      # copy database_id into wrangler.jsonc
+npx wrangler d1 migrations apply learning --remote
+npx wrangler secret put SYNC_TOKEN                   # paste a long random string
+```
+
+**Local dev:** put `SYNC_TOKEN=local-dev-token` in `.dev.vars` (gitignored), then `npx wrangler d1 migrations apply learning --local` and `npx wrangler dev`.

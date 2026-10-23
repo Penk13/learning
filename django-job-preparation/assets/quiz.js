@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  document.querySelectorAll("[data-quiz]").forEach((quiz) => {
+  document.querySelectorAll("[data-quiz]").forEach((quiz, i) => {
     const buttons = [...quiz.querySelectorAll("button[data-answer]")];
     const status = quiz.querySelector("[data-quiz-status]");
     let answered = false;
@@ -26,6 +26,16 @@
             : "Not quite. The correct option is highlighted; try explaining why.";
         }
         quiz.classList.add("answered");
+        // Picked up by assets/progress.js for answer sync.
+        quiz.dispatchEvent(new CustomEvent("quiz:answered", {
+          bubbles: true,
+          detail: {
+            qid: quiz.dataset.qid || `q${i + 1}`,
+            question: quiz.querySelector(".quiz-question")?.textContent || "",
+            answer: button.textContent,
+            correct,
+          },
+        }));
       });
     });
   });

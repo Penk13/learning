@@ -2,7 +2,7 @@
 
 Copies each course (minus repo-only files) and the shared assets/ folder, then
 wires every lesson and reference page into the site shell: shared stylesheet
-and script, a sticky top bar and prev/next navigation.
+and scripts (site.js, progress.js answer sync), a sticky top bar and prev/next navigation.
 Prefixes lesson and reference <title> tags with TITLE_PREFIX and generates
 index.html for the site root and each course. A course is any top-level folder
 containing a lessons/ directory.
@@ -28,7 +28,8 @@ ICON = {
     "back": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>',
     "chev": '<svg class="sx-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>',
     "theme": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor"/></svg>',
-    "doc": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
+    "sync": '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5Z"/></svg>',
+    "doc":'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>',
 }
 
 # Applies the saved theme before first paint, so dark mode never flashes light.
@@ -47,7 +48,10 @@ def top_bar(back_href, back_label, title, sub, progress=False):
             if back_href else '<span class="sx-pad"></span>')
     sub_html = f'<span><i class="sx-dot"></i>{e(sub)}</span>' if sub else ""
     bar = '<div class="sx-progress"><span></span></div>' if progress else ""
-    return (f'<header class="sx-bar">{back}<div class="sx-where"><b>{e(title)}</b>{sub_html}</div>'
+    # Lesson and reference pages get the answer-sync status button (assets/progress.js).
+    sync = (f'<button class="sx-icon sx-sync" type="button" data-sx-sync aria-label="Answer sync">{ICON["sync"]}</button>'
+            if progress else "")
+    return (f'<header class="sx-bar">{back}<div class="sx-where"><b>{e(title)}</b>{sub_html}</div>{sync}'
             f'<button class="sx-icon" type="button" data-sx-theme aria-label="Toggle dark mode">{ICON["theme"]}</button>{bar}</header>')
 
 
@@ -113,7 +117,8 @@ def wire_page(path, *, course, course_title, section, items, index):
     first_css = re.search(r'<link[^>]+rel="stylesheet"', text)
     at = first_css.start() if first_css else text.lower().index("</head>")
     text = text[:at] + head_bits("../../") + text[at:]
-    text = re.sub(r"</head>", '<script src="../../assets/site.js" defer></script>\n</head>', text, count=1, flags=re.I)
+    text = re.sub(r"</head>", '<script src="../../assets/site.js" defer></script>\n'
+                  '<script src="../../assets/progress.js" defer></script>\n</head>', text, count=1, flags=re.I)
 
     bar = top_bar("../index.html", f"Back to {course_title}", short_title(title), f"{course_title} · {where}", progress=True)
     text = re.sub(r"(<body\b[^>]*>)", lambda m: m.group(1) + "\n" + bar, text, count=1, flags=re.I)

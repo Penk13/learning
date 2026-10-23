@@ -227,6 +227,21 @@ section { margin: 2.2rem 0; }
 .sx-where b { font-size: .92rem; font-weight: 650; }
 .sx-where span { font-size: .74rem; color: var(--muted); }
 .sx-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 6px; vertical-align: 1px; }
+/* answer-sync button: status dot set by progress.js via data-state */
+.sx-sync { position: relative; }
+.sx-sync::after {
+  content: ""; position: absolute; right: 9px; bottom: 10px; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted); box-shadow: 0 0 0 2px var(--bg);
+}
+.sx-sync[data-state="ok"]::after { background: var(--good); }
+.sx-sync[data-state="pending"]::after { background: var(--accent); }
+.sx-sync[data-state="error"]::after { background: var(--bad); }
+.sx-save { display: flex; align-items: center; gap: 12px; margin: 8px 0 12px; font-size: .9rem; }
+.sx-save button {
+  min-height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--accent); cursor: pointer;
+  background: var(--accent); color: var(--on-accent, #fff); font: inherit; font-weight: 650;
+}
+.sx-save span { color: var(--muted); }
 .sx-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; }
 .sx-progress span { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: 0 50%; transform: scaleX(0); }
 

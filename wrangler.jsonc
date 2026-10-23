@@ -1,7 +1,20 @@
 {
   "name": "learning",
+  "main": "worker/index.js",
   "compatibility_date": "2026-10-01",
+  // Static files are served directly; the Worker only runs for paths with no
+  // matching asset, which is how /api/answers reaches it.
   "assets": {
-    "directory": "./dist"
-  }
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "learning",
+      "database_id": "d10dedcb-9a34-4116-a9c7-af7a6785c67c",
+      "migrations_dir": "migrations"
+    }
+  ]
+  // Secret (not in this file): SYNC_TOKEN, set with `npx wrangler secret put SYNC_TOKEN`.
 }

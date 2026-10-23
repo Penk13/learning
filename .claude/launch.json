@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "dist"],
       "port": 8765
+    },
+    {
+      "name": "learning-worker",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "set PATH=C:\\Users\\msi\\AppData\\Local\\nvm\\v22.12.0;%PATH% && npx --yes wrangler@4 dev --ip 127.0.0.1 --port 8787"],
+      "port": 8787
     }
   ]
 }

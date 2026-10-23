@@ -45,7 +45,7 @@
       if (scoreEl) scoreEl.textContent = `${correct} / ${quizzes.length} correct` +
         (answered < quizzes.length ? ` · ${quizzes.length - answered} left` : " · done");
     };
-    quizzes.forEach((quiz) => {
+    quizzes.forEach((quiz, qi) => {
       const answer = Number(quiz.dataset.answer);
       const opts = [...quiz.querySelectorAll("button.opt")];
       opts.forEach((btn, i) => btn.addEventListener("click", () => {
@@ -57,6 +57,16 @@
         opts[answer].classList.add("right");
         opts.forEach((b) => (b.disabled = true));
         updateScore();
+        // Picked up by assets/progress.js for answer sync.
+        quiz.dispatchEvent(new CustomEvent("quiz:answered", {
+          bubbles: true,
+          detail: {
+            qid: quiz.dataset.qid || `q${qi + 1}`,
+            question: quiz.querySelector(".q")?.textContent || "",
+            answer: btn.textContent,
+            correct: i === answer,
+          },
+        }));
       }));
     });
     const reset = $("[data-quiz-reset]");
