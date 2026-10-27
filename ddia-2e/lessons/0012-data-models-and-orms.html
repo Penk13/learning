@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Data Models, Declarative Queries and ORMs</title>
 <link rel="stylesheet" href="../assets/course.css">
-<script src="../assets/widgets.js" defer></script>
 </head>
 <body>
 <div class="lesson-shell">
@@ -54,9 +53,8 @@
   <div class="card"><h4>👍 Upsides</h4><p>Some translation is unavoidable, so less boilerplate is a win for simple, repetitive cases. Some ORMs cache results; many manage <b>schema migrations</b>.</p></div>
 </div>
 
-<p><b>N+1 queries</b>: one query fetches N records, then one extra query per record fetches related data. Fix it with a join or eager loading:</p>
+<p><b>N+1 queries</b>: one query fetches N records, then one extra query per record fetches related data. Fix it with a join or eager loading.</p>
 
-<div class="widget" data-widget="n-plus-one"></div>
 </section>
 
 <section>

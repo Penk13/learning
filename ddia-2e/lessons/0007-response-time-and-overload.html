@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Response Time, Queueing and Overload</title>
 <link rel="stylesheet" href="../assets/course.css">
-<script src="../assets/widgets.js" defer></script>
 </head>
 <body>
 <div class="lesson-shell">
@@ -22,9 +21,8 @@
   <div class="card"><h4>🚚 Throughput</h4><p>Requests (or data volume) per second. <i>Decides how many machines you need, i.e. cost.</i></p></div>
 </div>
 
-<p>They're linked by <b>queueing</b>: as throughput nears the hardware's maximum, each new request waits for earlier ones, and response time shoots up. Drag it:</p>
+<p>They're linked by <b>queueing</b>: as throughput nears the hardware's maximum, each new request waits for earlier ones, and response time shoots up.</p>
 
-<div class="widget" data-widget="queueing"></div>
 
 <div class="callout warn"><b>When an overloaded system won't recover.</b> Slow responses → clients time out and retry → even more load → a <b>retry storm</b>. The system can stay stuck even after the original load drops: a <b>metastable failure</b>. Defences:
 <ul style="margin:.4em 0 0">

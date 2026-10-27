@@ -11,7 +11,7 @@ Personal study site for quick review and spaced repetition. The learner reads sh
 - Every card needs a `data-qid`, unique within the page: `q1`, `q2`… for multiple choice, `t1`, `t2`… for free text. Never renumber or reuse one on a published lesson; a new card gets the next unused number.
 - The build loads the shared card script (`assets/quiz.js`) into every lesson. Don't write course quiz scripts or loose `<textarea>` prompts.
 - No hand-written nav, footer or time estimate: the build adds navigation and shows reading time on the index.
-- Course-wide notes go in the one cheat sheet, `reference/cheatsheet.html`.
+- Course-wide notes go in the one cheat sheet, `reference/cheatsheet.html`. Keep every course folder in the layout from DESIGN.md (stylesheet `assets/course.css`, no scripts or interactive widgets).
 - Run `python build_index.py` before committing. It must print no warnings.
 
 ## Reviewing the learner's answers

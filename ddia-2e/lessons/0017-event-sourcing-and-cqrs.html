@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Event Sourcing and CQRS</title>
 <link rel="stylesheet" href="../assets/course.css">
-<script src="../assets/widgets.js" defer></script>
 </head>
 <body>
 <div class="lesson-shell">
@@ -51,9 +50,8 @@
 <figcaption>A conference-booking system. <b>Event sourcing</b>: events are the source of truth. <b>CQRS</b> (command query responsibility segregation): separate read-optimized views derived from the write-optimized log. Both terms come from domain-driven design.</figcaption>
 </figure>
 
-<p>A <b>command</b> is validated first; only a valid one becomes a <b>fact</b>, appended as an event. So the log holds only valid events, and a view builder <b>may not reject</b> one. Name events in the <b>past tense</b> ("seats were booked"): a later cancellation doesn't erase the fact that the booking existed. Try it:</p>
+<p>A <b>command</b> is validated first; only a valid one becomes a <b>fact</b>, appended as an event. So the log holds only valid events, and a view builder <b>may not reject</b> one. Name events in the <b>past tense</b> ("seats were booked"): a later cancellation doesn't erase the fact that the booking existed.</p>
 
-<div class="widget" data-widget="event-sourcing"></div>
 
 <div class="grid">
   <div class="card" style="border-top:4px solid var(--good)"><h4>👍 Why it's attractive</h4>

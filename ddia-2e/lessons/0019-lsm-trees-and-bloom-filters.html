@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LSM-Trees and Bloom Filters</title>
 <link rel="stylesheet" href="../assets/course.css">
-<script src="../assets/widgets.js" defer></script>
 </head>
 <body>
 <div class="lesson-shell">
@@ -49,16 +48,14 @@
 <figcaption>Segments are written once, then <b>immutable</b>. A crash mid-flush just means deleting the unfinished file; the log restores the memtable. Immutable segments also suit <b>object storage</b>.</figcaption>
 </figure>
 
-<p>To <b>delete</b>, append a <b>tombstone</b>: a marker saying "this key is gone"; compaction discards older values under it. This is the <b>Log-Structured Merge-tree</b> (LSM-tree), popularized by Google's Bigtable paper (which coined <i>SSTable</i> and <i>memtable</i>). Used by <b>RocksDB, Cassandra, ScyllaDB, HBase</b>. Play with it:</p>
+<p>To <b>delete</b>, append a <b>tombstone</b>: a marker saying "this key is gone"; compaction discards older values under it. This is the <b>Log-Structured Merge-tree</b> (LSM-tree), popularized by Google's Bigtable paper (which coined <i>SSTable</i> and <i>memtable</i>). Used by <b>RocksDB, Cassandra, ScyllaDB, HBase</b>.</p>
 
-<div class="widget" data-widget="lsm"></div>
 </section>
 
 <section>
 <h2>Bloom filters: skip segments that can't contain the key</h2>
 <p>Reading an old or missing key means checking many segments. So each SSTable carries a small <b>Bloom filter</b>: a bit array where each key sets a few hashed bit positions. Any 0 among a key's bits means <b>definitely absent</b>. All 1s means <b>probably present</b>: a <b>false positive</b> is possible, costing one wasted block read, never a wrong answer. Rule of thumb: <b>10 bits per key ≈ 1% false positives</b>; every 5 more bits per key cuts that tenfold.</p>
 
-<div class="widget" data-widget="bloom"></div>
 </section>
 
 <section>

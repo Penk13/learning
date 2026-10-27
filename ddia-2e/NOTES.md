@@ -15,15 +15,15 @@
 - Differs from 1st ed.: old Ch.1 (reliable/scalable/maintainable) is now **Ch.2**; new Ch.1 covers OLTP/OLAP, warehouses/lakes, systems of record, cloud vs self-host, distributed vs single-node, law. Twitter case study uses new numbers (5.8k posts/s, 400M lookups/s vs ~1.16M writes/s). Partitioning → "Sharding" (Ch.7). Batch chapter rewritten (no MapReduce focus).
 
 ## Components (assets/)
-- `course.css` — course tokens, cards, grid, callouts, widget, glossary styles, `pre` code blocks + `.code-label`, print.
-- `widgets.js` — widgets via `data-widget` (cards use the shared `/assets/quiz.js`): `percentiles`, `tail-amplification`, `fanout` (2nd-ed numbers, spike toggle), `queueing` (Ch.2 response time vs load, toy M/M/1), `provisioning` (Ch.1 cloud vs self-host toy cost model), `n-plus-one` (Ch.3 ORM N+1 toy cost), `event-sourcing` (Ch.3 event log → views, bug + replay), `lsm` (Ch.4 memtable → SSTables → compaction, tombstones, lookup path), `bloom` (Ch.4 16-bit Bloom filter, false positives). Add new widgets to the `WIDGETS` map.
+- `course.css` — course tokens, cards, grid, callouts, glossary styles, `pre` code blocks + `.code-label`, print. No interactive widgets (removed 2026-10-27 at the learner's request); use static figures or tables.
 - Inline SVG uses CSS vars (`var(--rel)` etc.) so diagrams follow dark mode.
 
 ## Lesson pattern
-Header (eyebrow "DDIA · Ch.N …", h1, dek) → one idea, with a figure or widget if it carries it → 2–4 cards (≤1 multiple choice, equal-length options). See /DESIGN.md.
+Header (eyebrow "DDIA · Ch.N …", h1, dek) → one idea, with a static figure or table if it carries it → 2–4 cards (≤1 multiple choice, equal-length options). See /DESIGN.md.
 
 ## Progress
 - 2026-10-26: Redesign. Ch.1–4 split into 25 short lessons (0001–0025, 96 cards); one `reference/cheatsheet.html`; `ROADMAP.md` added. Answer history reset.
+- 2026-10-27: Interactive widgets (`widgets.js`) removed; lessons keep their static figures.
 - 2026-10-02: Lesson 0001 created from 1st-ed Ch.1 (wrong edition).
 - 2026-10-03: Re-based course on 2nd ed. New Lesson 0001 = Ch.1 Trade-offs; old content revised into Lesson 0002 = Ch.2 Nonfunctional Requirements. Cheat sheets ch1/ch2 + glossary rebuilt. Learner hasn't done quizzes yet.
 - 2026-10-05: Learner finished Ch.1 + lesson 0001 + ch1 cheat sheet + glossary. Created `learning-records/` (one record per lesson, Missing Semester format: Demonstrated / Gaps found / Next). Record 0001 added. Ch.2 planned 2026-10-06 — start with Ch.1 recall listed in record 0001.

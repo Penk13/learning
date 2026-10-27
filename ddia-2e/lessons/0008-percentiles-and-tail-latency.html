@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Percentiles and Tail Latency</title>
 <link rel="stylesheet" href="../assets/course.css">
-<script src="../assets/widgets.js" defer></script>
 </head>
 <body>
 <div class="lesson-shell">
@@ -18,9 +17,8 @@
 
 <section>
 <h2>Use percentiles, not the mean</h2>
-<p>The mean is useful for estimating throughput limits, but it doesn't tell you how many users actually felt a given delay. Sort the response times instead: <b>pX</b> is the time X% of requests are faster than. Drag the outlier slider:</p>
+<p>The mean is useful for estimating throughput limits, but it doesn't tell you how many users actually felt a given delay. Sort the response times instead: <b>pX</b> is the time X% of requests are faster than.</p>
 
-<div class="widget" data-widget="percentiles"></div>
 
 <div class="grid">
   <div class="card"><h4>p50 (median)</h4><p>Half of requests are faster. How long users <i>typically</i> wait.</p></div>
@@ -35,7 +33,6 @@
 <p class="big-idea">P(page is slow) = 1 − (1 − p)<sup>n</sup></p>
 <p>Ten calls at 1% each: 1 − 0.99<sup>10</sup> ≈ 9.6% of pages are slow.</p>
 
-<div class="widget" data-widget="tail-amplification"></div>
 </section>
 
 <section>

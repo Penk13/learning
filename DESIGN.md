@@ -78,12 +78,24 @@ The schedule is never stored: `/api/schedule` returns each card's answer history
 
 `/api/progress` and `/api/schedule` return counts and (time, correct) pairs only; answer text is read with `wrangler`, never over HTTP.
 
-## Per course
+## Course layout
 
-- `ROADMAP.md`: the planned lessons in order, ticked when built.
-- `learning-records/NNNN-slug.md`: one per lesson, written by the agent at review time.
-- `reference/cheatsheet.html`: one cheat sheet per course, extended as lessons are added.
-- `MISSION.md`, `NOTES.md`, `RESOURCES.md` as before.
+Every course folder has exactly this shape; a new course copies it.
+
+```
+<course>/
+  README.md            overview and start-here links
+  MISSION.md           goal and scope (the build reads its title and "## Why")
+  ROADMAP.md           planned lessons in order, ticked when built
+  NOTES.md             teaching notes: learner preferences, progress log
+  RESOURCES.md         sources and links
+  assets/course.css    course-only styles (may be just a comment); shared styles live in /assets/site.css
+  lessons/NNNN-slug.html
+  reference/cheatsheet.html   the one cheat sheet, extended as lessons are added
+  learning-records/NNNN-slug.md   one per lesson, written by the agent at review time
+```
+
+No course scripts and no interactive widgets: lessons use static figures and tables, and cards use the shared `/assets/quiz.js`.
 
 ## Agent loop
 

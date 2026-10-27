@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Case Study: Social Network Home Timelines</title>
 <link rel="stylesheet" href="../assets/course.css">
-<script src="../assets/widgets.js" defer></script>
 </head>
 <body>
 <div class="lesson-shell">
@@ -65,9 +64,8 @@
 <figcaption>Approach 2 does more work per post but far less in total, and makes the frequent operation (reading) cheap.</figcaption>
 </figure>
 
-<p>When one request triggers many downstream requests, the multiplication factor is the <b>fan-out</b>. Precomputing a query's result and keeping it updated is <b>materialization</b>; the timeline cache is a <b>materialized view</b>. Try both designs:</p>
+<p>When one request triggers many downstream requests, the multiplication factor is the <b>fan-out</b>. Precomputing a query's result and keeping it updated is <b>materialization</b>; the timeline cache is a <b>materialized view</b>.</p>
 
-<div class="widget" data-widget="fanout"></div>
 
 <div class="grid">
   <div class="card"><h4>🌟 Celebrities</h4><p>Fanning out to 100M timelines is too much. Store celebrity posts separately and <b>merge them in at read time</b>: a hybrid.</p></div>

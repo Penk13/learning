@@ -6,7 +6,7 @@
   --rel: light-dark(#2f6f9f, #6aa9d8);   /* reliability */
   --sca: light-dark(#b06d0f, #e3a648);   /* scalability */
   --mai: light-dark(#4b8a4a, #7cc07a);   /* maintainability */
-  /* older names, still used by lessons and widgets.js */
+  /* older names, still used by lessons */
   --fg: var(--ink);
   --rule: var(--line);
   --card: var(--surface);
@@ -53,28 +53,6 @@ svg .white { fill: #fff; }
 .card.mai { border-top: 4px solid var(--mai); }
 table.compare { font-size: .88rem; }
 
-/* ---------- widgets (see widgets.js) ---------- */
-.widget {
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 14px; margin: 1.6em 0; box-shadow: var(--shadow); font-size: .92rem;
-}
-.widget svg { display: block; width: 100%; height: auto; }
-.widget .w-title { font-weight: 700; font-size: 1rem; margin-bottom: .2em; }
-.widget .w-sub { color: var(--muted); font-size: .84rem; margin-bottom: .8em; }
-.widget label { display: block; margin: .8em 0 .2em; }
-.widget input[type=range] { width: 100%; height: 32px; accent-color: var(--accent); }
-.widget .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.widget .stat { flex: 1 1 calc(50% - 8px); padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-size: .82rem; }
-.widget .stat b { display: block; font-size: 1.15rem; }
-.widget .readout { font-size: 1rem; margin-top: .6em; }
-.btn {
-  font: inherit; font-size: .9rem; cursor: pointer; min-height: 40px; border-radius: 10px;
-  border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); padding: 8px 14px;
-}
-.btn:hover { border-color: var(--accent); }
-.btn.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-@media (min-width: 640px) { .widget { padding: 18px; } .widget .stat { flex: 0 1 auto; min-width: 110px; } }
-
 /* ---------- reference docs ---------- */
 dl.glossary dt { font-weight: 700; margin-top: 1.1em; }
 dl.glossary dd { margin: .2em 0 0 0; }
@@ -84,7 +62,7 @@ dl.glossary dd .src { font-size: .75rem; color: var(--muted); }
 .code-label { font-size: .78rem; font-weight: 700; color: var(--muted); margin-bottom: -.5em; }
 
 @media print {
-  .widget, .quiz, .pager, .ask { break-inside: avoid; }
+  .quiz, .ask { break-inside: avoid; }
   .no-print { display: none !important; }
   h2 { break-after: avoid; }
   figure { break-inside: avoid; }
