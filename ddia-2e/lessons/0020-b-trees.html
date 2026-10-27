@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B-Trees</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.4 Storage and Retrieval</p>
+  <h1>B-Trees</h1>
+  <p class="dek">The index in almost every relational database: fixed-size pages, overwritten in place, kept balanced.</p>
+</header>
+
+<section>
+<p>Introduced in 1970 and called "ubiquitous" by 1979, the B-tree is the standard index in <b>almost every relational database</b>. Like SSTables, B-trees keep keys sorted, so point lookups and range queries are fast. Unlike them, a B-tree splits the database into <b>fixed-size pages</b> (traditionally 4 KiB; PostgreSQL 8 KiB, MySQL 16 KiB) and <b>overwrites pages in place</b>. Pages refer to child pages by page number, forming a tree.</p>
+
+<figure>
+<svg viewBox="0 0 640 210" role="img" aria-label="B-tree lookup of key 251: the root page holds boundaries 100, 200, 300, 400; follow the reference between 200 and 300 to a page with boundaries 250 to 300, then follow 250 to 270 into a leaf page holding keys 250 to 269 with their values.">
+  <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--accent)"/></marker></defs>
+  <text x="20" y="46" font-size="11" class="muted-t">root</text>
+  <g font-size="12" font-family="var(--mono)" text-anchor="middle">
+    <rect x="130" y="24" width="380" height="34" rx="6" class="box"/>
+    <text x="175" y="46">ref</text><text x="210" y="46" font-weight="700">100</text><text x="245" y="46">ref</text><text x="280" y="46" font-weight="700">200</text>
+    <rect x="300" y="28" width="40" height="26" rx="4" fill="var(--accent)" opacity=".25"/><text x="320" y="46">ref</text>
+    <text x="355" y="46" font-weight="700">300</text><text x="390" y="46">ref</text><text x="425" y="46" font-weight="700">400</text><text x="460" y="46">ref</text>
+  </g>
+  <path d="M320 58 L320 92" stroke="var(--accent)" stroke-width="2" fill="none" marker-end="url(#a3)"/>
+  <text x="20" y="118" font-size="11" class="muted-t">interior</text>
+  <g font-size="12" font-family="var(--mono)" text-anchor="middle">
+    <rect x="150" y="96" width="340" height="34" rx="6" class="box"/>
+    <text x="185" y="118" font-weight="700">200</text><text x="215" y="118">ref</text><text x="250" y="118" font-weight="700">250</text>
+    <rect x="265" y="100" width="40" height="26" rx="4" fill="var(--accent)" opacity=".25"/><text x="285" y="118">ref</text>
+    <text x="320" y="118" font-weight="700">270</text><text x="355" y="118">ref</text><text x="390" y="118" font-weight="700">290</text><text x="425" y="118">ref</text><text x="460" y="118" font-weight="700">300</text>
+  </g>
+  <path d="M285 130 L285 164" stroke="var(--accent)" stroke-width="2" fill="none" marker-end="url(#a3)"/>
+  <text x="20" y="190" font-size="11" class="muted-t">leaf</text>
+  <g font-size="11" font-family="var(--mono)" text-anchor="middle">
+    <rect x="150" y="168" width="340" height="34" rx="6" fill="var(--card-2)" stroke="var(--rule)"/>
+    <text x="195" y="190">250:val</text>
+    <rect x="232" y="172" width="64" height="26" rx="4" fill="var(--accent)"/><text x="264" y="190" class="white" font-weight="700">251:val</text>
+    <text x="330" y="190">252:val</text><text x="395" y="190">…</text><text x="450" y="190">269:val</text>
+  </g>
+  <text x="560" y="118" font-size="11" class="muted-t" text-anchor="middle">depth O(log n)</text>
+</svg>
+<figcaption>Looking up key 251. The <b>branching factor</b> (child references per page) is typically several hundred, so most trees are 3–4 levels deep. Four levels of 4 KiB pages with branching factor 500 hold up to <b>250 TB</b>.</figcaption>
+</figure>
+
+<p><b>Insert</b> into a full page → <b>split</b> it into two half-full pages and add the new boundary to the parent. If the parent is full it splits too, possibly up to the root (then a new root grows on top). This keeps the tree <b>balanced</b>.</p>
+</section>
+
+<section>
+<h2>Making B-trees crash-safe</h2>
+<p>A split overwrites several pages. Crash halfway and you can get an <b>orphan page</b> (no parent points to it) or a half-written <b>torn page</b>. The fix is a <b>write-ahead log (WAL)</b>: an append-only file where every change is written <i>before</i> the pages are touched. After a crash, replay it to restore consistency (filesystems call this <b>journaling</b>). Pages are buffered in memory for speed; once the WAL entry is <code>fsync</code>ed, the write is durable.</p>
+
+<div class="grid">
+  <div class="card"><h4>🧬 Copy-on-write</h4><p>LMDB writes modified pages to a new location and creates new parent versions, instead of overwriting plus WAL. Also helps concurrency (consistent snapshots).</p></div>
+  <div class="card"><h4>✂ Abbreviated keys</h4><p>Interior pages need only enough of a key to act as a boundary: more keys per page, higher branching factor, fewer levels.</p></div>
+  <div class="card"><h4>↔ Sibling pointers</h4><p>Leaf pages link to their neighbours, so range scans don't jump back up to parents.</p></div>
+</div>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">Why does a B-tree storage engine need a write-ahead log?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">A crash in the middle of a page split can corrupt the tree</button>
+    <button data-answer="wrong">To keep its pages sorted by key</button>
+    <button data-answer="wrong">To make range queries faster</button>
+    <button data-answer="wrong">To merge segments in the background</button>
+  </div>
+  <div class="quiz-explanation">B-trees overwrite pages in place. A crash during a multi-page split leaves orphan or torn pages. Changes go to the WAL first and are replayed after a crash.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">What happens when you insert a key into a B-tree page that is already full?</p>
+  <div class="quiz-answer">The page is split into two half-full pages and the new boundary key is added to the parent page. If the parent is also full it splits too, possibly all the way up to the root, where a new root is created. This keeps the tree balanced.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">What is a B-tree's branching factor, and why can a tree only 3–4 levels deep hold a huge database?</p>
+  <div class="quiz-answer">The number of child-page references in one page, typically several hundred. Capacity grows exponentially with depth: four levels of 4 KiB pages with a branching factor of 500 can hold up to about 250 TB, so lookups touch only a few pages.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">How do B-trees and SSTables differ in how they store sorted keys on disk?</p>
+  <div class="quiz-answer">Both keep keys sorted. SSTables are immutable files written once and merged later (log-structured). B-trees divide data into fixed-size pages that are overwritten in place, with pages referencing child pages to form a balanced tree.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

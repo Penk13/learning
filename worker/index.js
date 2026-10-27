@@ -3,8 +3,12 @@
  *
  * POST /api/answers   { attempts: [...] }  inserts into D1 (binding DB).
  * GET  /api/progress  per-lesson counts only: { lessons: [{ course, lesson, answered, wrong }] },
- *                     judged on each question's first attempt. Full answers are read with
- *                     `wrangler d1 execute learning --remote`, never over HTTP. */
+ *                     judged on each question's first attempt.
+ * GET  /api/schedule  each card's answer history for the Leitner queue (assets/review.js):
+ *                     { cards: { "course/lesson/qid": [[answered_at, ok], ...] } }, oldest first.
+ *                     ok is the agent's latest grade if any, else the attempt's own result;
+ *                     ungraded free text counts as correct (DESIGN.md).
+ * Full answers are read with `wrangler d1 execute learning --remote`, never over HTTP. */
 
 const MAX_BATCH = 50;
 const LIMITS = { client_id: 64, course: 100, lesson: 200, qid: 100, question: 4000, answer: 10000 };
@@ -68,9 +72,22 @@ async function readProgress(request, env) {
   return json({ lessons: results });
 }
 
+async function readSchedule(request, env) {
+  if (!(await authorized(request, env))) return json({ error: "unauthorized" }, 401);
+  const { results } = await env.DB.prepare(
+    `SELECT a.course, a.lesson, a.qid, a.answered_at,
+            COALESCE((SELECT g.correct FROM grades g WHERE g.attempt_id = a.id
+                      ORDER BY g.graded_at DESC, g.id DESC LIMIT 1), a.correct, 1) AS ok
+     FROM attempts a ORDER BY a.answered_at, a.id`).all();
+  const cards = {};
+  for (const r of results) (cards[`${r.course}/${r.lesson}/${r.qid}`] ||= []).push([r.answered_at, r.ok]);
+  return json({ cards });
+}
+
 const ROUTES = {
   "/api/answers": { method: "POST", handler: saveAnswers },
   "/api/progress": { method: "GET", handler: readProgress },
+  "/api/schedule": { method: "GET", handler: readSchedule },
 };
 
 export default {

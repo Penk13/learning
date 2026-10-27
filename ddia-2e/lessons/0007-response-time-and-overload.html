@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Response Time, Queueing and Overload</title>
+<link rel="stylesheet" href="../assets/course.css">
+<script src="../assets/widgets.js" defer></script>
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.2 Defining Nonfunctional Requirements</p>
+  <h1>Response Time, Queueing and Overload</h1>
+  <p class="dek">What "fast" means, why it collapses near capacity, and how a busy system can get stuck in failure.</p>
+</header>
+
+<section>
+<div class="grid">
+  <div class="card"><h4>⏱ Response time</h4><p>Time from request to answer, as the user sees it. <i>What users care about.</i></p></div>
+  <div class="card"><h4>🚚 Throughput</h4><p>Requests (or data volume) per second. <i>Decides how many machines you need, i.e. cost.</i></p></div>
+</div>
+
+<p>They're linked by <b>queueing</b>: as throughput nears the hardware's maximum, each new request waits for earlier ones, and response time shoots up. Drag it:</p>
+
+<div class="widget" data-widget="queueing"></div>
+
+<div class="callout warn"><b>When an overloaded system won't recover.</b> Slow responses → clients time out and retry → even more load → a <b>retry storm</b>. The system can stay stuck even after the original load drops: a <b>metastable failure</b>. Defences:
+<ul style="margin:.4em 0 0">
+  <li><b>Client side:</b> exponential backoff with randomness; a <b>circuit breaker</b> or token bucket to stop calling a failing service for a while.</li>
+  <li><b>Server side:</b> <b>load shedding</b> (reject early when near overload); <b>backpressure</b> (tell clients to slow down).</li>
+</ul></div>
+</section>
+
+<section>
+<h2>Four timing words, used precisely</h2>
+<figure>
+<svg viewBox="0 0 640 110" role="img" aria-label="Response time equals network latency plus queueing delay plus service time plus network latency back">
+  <rect x="0" y="34" width="120" height="34" rx="6" fill="var(--card-2)"/><text x="60" y="56" text-anchor="middle" font-size="12">network latency →</text>
+  <rect x="120" y="34" width="180" height="34" fill="var(--sca)" opacity=".35"/><text x="210" y="56" text-anchor="middle" font-size="12">queueing delay</text>
+  <rect x="300" y="34" width="200" height="34" fill="var(--rel)" opacity=".35"/><text x="400" y="56" text-anchor="middle" font-size="12">service time (actual work)</text>
+  <rect x="500" y="34" width="140" height="34" rx="6" fill="var(--card-2)"/><text x="570" y="56" text-anchor="middle" font-size="12">← network latency</text>
+  <path d="M0 80 H640" stroke="var(--fg)" stroke-width="1.5"/><text x="320" y="100" text-anchor="middle" font-size="12" font-weight="700">response time = everything the client sees</text>
+  <text x="320" y="20" text-anchor="middle" font-size="11" class="muted-t">latency = time the request is latent (not being worked on)</text>
+</svg>
+<figcaption>Queueing isn't part of service time, so a server's own logs can look fine while users suffer. <b>Measure response time on the client side.</b></figcaption>
+</figure>
+
+<ul>
+  <li><b>Service time</b>: the service is actively processing the request.</li>
+  <li><b>Queueing delay</b>: waiting for a CPU, an output buffer, earlier requests. Rises sharply near capacity.</li>
+  <li><b>Latency</b>: catch-all for time a request is latent; <b>network latency</b> is time in transit.</li>
+  <li><b>Response time</b>: all of the above, as seen by the client.</li>
+</ul>
+
+<p>Why do identical requests take different times? Context switches, lost packets and TCP retransmission, garbage-collection pauses, page faults, even rack vibration. And <b>head-of-line blocking</b>: a few slow requests hold up the fast ones queued behind them. Variation in network delay is called <b>jitter</b>.</p>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">A service near capacity slows down; clients time out and resend; it stays down even after traffic drops. What is this called?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">A metastable failure caused by a retry storm</button>
+    <button data-answer="wrong">Head-of-line blocking</button>
+    <button data-answer="wrong">Tail latency amplification</button>
+    <button data-answer="wrong">A cascading hardware fault</button>
+  </div>
+  <div class="quiz-explanation">Retries add load to an already overloaded system, which can then stay overloaded on its own. Fix with exponential backoff, circuit breakers, load shedding and backpressure.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-case">Your server logs say p99 = 80 ms, but users complain about 2-second waits.</p>
+  <p class="quiz-question">Where could the missing time be, and how should you measure instead?</p>
+  <div class="quiz-answer">Server logs measure service time only. The missing time is queueing delay before processing starts (e.g. head-of-line blocking behind slow requests) and network latency. Measure response time on the client side.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">Distinguish response time, service time, queueing delay and latency.</p>
+  <div class="quiz-answer">Service time: the server actively working on the request. Queueing delay: time waiting for resources or for earlier requests. Latency: any time the request is latent (not being processed), e.g. network latency in transit. Response time: everything the client sees, from sending the request to getting the answer.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">Name two client-side and two server-side defences against overload and retry storms.</p>
+  <div class="quiz-answer">Client side: exponential backoff with randomness (jitter) between retries; a circuit breaker or token bucket that stops calling a failing service for a while. Server side: load shedding (reject requests early near overload) and backpressure (tell clients to slow down).</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

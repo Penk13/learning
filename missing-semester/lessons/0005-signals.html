@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signals</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Command-line environment</div>
+    <h1>Signals</h1>
+    <p class="dek">Ctrl-C is the OS delivering a small numbered message; the process decides what to do with it.</p>
+  </header>
+
+  <section>
+    <h2>The model</h2>
+    <blockquote>
+      A <strong>signal</strong> is a tiny message (a name/number) the OS delivers to a process. The process can <strong>handle</strong> it (run its own code), <strong>ignore</strong> it, or take the <strong>default action</strong> (usually: die). <code>SIGKILL</code> and <code>SIGSTOP</code> can't be caught.
+    </blockquote>
+    <div class="flow">
+      <div class="flow-node">you press<br>Ctrl-C</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">terminal sends<br>SIGINT</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">process decides<br>handle · ignore · default</div>
+    </div>
+    <p>So "Ctrl-C doesn't work" usually means the program chose to catch <code>SIGINT</code>.</p>
+  </section>
+
+  <section>
+    <h2>The signals worth knowing</h2>
+    <table>
+      <thead><tr><th>Signal</th><th>Sent by</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code>SIGINT</code></td><td>Ctrl-C</td><td>"interrupt"; catchable</td></tr>
+        <tr><td><code>SIGQUIT</code></td><td>Ctrl-\</td><td>stronger quit; catchable but rarely caught, so it often works when Ctrl-C is ignored</td></tr>
+        <tr><td><code>SIGTERM</code></td><td><code>kill PID</code></td><td>polite "please exit"; well-behaved programs clean up</td></tr>
+        <tr><td><code>SIGKILL</code></td><td><code>kill -9 PID</code></td><td>can't be caught; instant death, no cleanup</td></tr>
+        <tr><td><code>SIGTSTP</code></td><td>Ctrl-Z</td><td>pause; terminal version of the uncatchable <code>SIGSTOP</code></td></tr>
+        <tr><td><code>SIGHUP</code></td><td>terminal closes</td><td>"hang up"; default: die</td></tr>
+      </tbody>
+    </table>
+    <p><code>kill -l</code> lists all signals; <code>man signal</code> describes them. Despite its name, <code>kill</code> just <em>sends</em> a signal, <code>SIGTERM</code> by default.</p>
+  </section>
+
+  <section>
+    <h2>A program that ignores Ctrl-C</h2>
+    <div class="code-card"><pre>import signal, time
+def handler(signum, frame):
+    print("\nI got a SIGINT, but I am not stopping")
+signal.signal(signal.SIGINT, handler)   # replace the default action
+while True:
+    time.sleep(.1)</pre></div>
+    <p>Ctrl-C now only prints a message; Ctrl-\ still kills it because <code>SIGQUIT</code> has no handler. "Stop" is something the process agrees to.</p>
+  </section>
+
+  <section>
+    <h2>Sending signals</h2>
+    <div class="code-card"><pre>$ pgrep -lf runserver      # find processes → PID + command line
+$ kill 18653               # SIGTERM (polite) — try this first
+$ kill -9 18653            # SIGKILL — last resort
+$ pkill -f "sleep 1000"    # signal by matching the command line</pre></div>
+    <p><code>kill -9</code> skips all cleanup: temp files stay, data can be half-written, child processes can be orphaned.</p>
+  </section>
+
+  <section>
+    <h2>Graceful shutdown in real systems</h2>
+    <ul>
+      <li><strong>Containers:</strong> <code>docker stop</code> sends <code>SIGTERM</code>, waits a grace period (10 s by default), then sends <code>SIGKILL</code>. Kubernetes pod termination works the same way.</li>
+      <li><strong>.NET:</strong> the Generic Host treats Ctrl-C and <code>SIGTERM</code> as "stop gracefully" and fires <code>IHostApplicationLifetime.ApplicationStopping</code>. Put cleanup there.</li>
+      <li><strong>Django:</strong> Gunicorn treats <code>SIGTERM</code> as graceful shutdown; check your server's docs, as some use <code>SIGHUP</code> for "reload config".</li>
+      <li><strong>Container PID 1:</strong> if a shell script is the entrypoint and starts your app as a child, the signal may hit the script and never reach the app. End the script with <code>exec dotnet MyApp.dll</code> (or <code>exec gunicorn …</code>): <code>exec</code> replaces the shell with the app, so the app gets signals directly.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz data-qid="t1">
+      <p class="quiz-case">You press Ctrl-C on a Linux program and it keeps running.</p>
+      <p class="quiz-question">What is the most likely reason, and what do you try next, in order?</p>
+      <div class="quiz-answer">Ctrl-C sends <code>SIGINT</code>, which the program caught with its own handler. Try Ctrl-\ (<code>SIGQUIT</code>) or <code>kill PID</code> (<code>SIGTERM</code>) from another terminal; use <code>kill -9</code> (<code>SIGKILL</code>, uncatchable) only as a last resort.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="q1">
+      <p class="quiz-question">Why is <code>kill -9</code> a last resort rather than the default way to stop a process?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">SIGKILL can't be caught, so the process gets no chance to clean up.</button>
+        <button data-answer="wrong">It needs root permission.</button>
+        <button data-answer="wrong">It only pauses the process.</button>
+        <button data-answer="wrong">It kills every process in the terminal.</button>
+      </div>
+      <div class="quiz-explanation">Plain <code>kill</code> (SIGTERM) lets the app finish requests, flush files and run its cleanup. SIGKILL skips all of that and can leave orphaned children or corrupted data.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t2">
+      <p class="quiz-question">Step by step, what happens when <code>docker stop</code> runs on an ASP.NET Core or Django container? Use SIGTERM, grace period, SIGKILL and graceful shutdown.</p>
+      <div class="quiz-answer">Docker sends SIGTERM to the container's main process; the app starts a graceful shutdown (stops accepting requests, finishes in-flight ones, releases resources). Docker waits a grace period (10 s by default); if the process is still alive, it sends SIGKILL, which can't be caught. If a wrapper shell script doesn't <code>exec</code> the app, the app may never see SIGTERM and always gets killed.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

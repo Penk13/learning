@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tmux: Shells That Survive</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Command-line environment</div>
+    <h1>tmux: Shells That Survive</h1>
+    <p class="dek">tmux owns your shells; your terminal is just a viewer you can close and reopen.</p>
+  </header>
+
+  <section>
+    <h2>The model</h2>
+    <blockquote>
+      tmux is a <strong>server process that owns your shells</strong>. Close the viewer, or lose the connection, and the shells keep running. Reattach later and everything is where you left it.
+    </blockquote>
+    <div class="flow">
+      <div class="flow-node">your laptop<br>terminal</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">ssh<br>encrypted pipe</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">tmux on server<br>owns the shells</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">shells + jobs<br>survive disconnects</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why it beats <code>&amp;</code> and <code>nohup</code></h2>
+    <p>With <code>&amp;</code>, a job's parent is the shell belonging to your SSH session. When the connection drops, that shell gets <code>SIGHUP</code>, passes it on, and the job dies. Inside tmux, the shell's parent is the <strong>tmux server</strong>, which isn't tied to your connection. Unlike <code>nohup</code>, you can reattach and interact again, with live output and full scrollback.</p>
+  </section>
+
+  <section>
+    <h2>Prefix key and hierarchy</h2>
+    <p>Every shortcut starts with the prefix <strong>Ctrl-b</strong>: press it, release, then the next key (written <code>&lt;C-b&gt; d</code>).</p>
+    <ul>
+      <li><strong>Session</strong>: an independent workspace (one per project or task).</li>
+      <li><strong>Window</strong>: like a browser tab inside a session.</li>
+      <li><strong>Pane</strong>: a split inside a window.</li>
+    </ul>
+    <div class="code-card"><pre># Sessions (typed in a normal shell)
+$ tmux new -s deploy      # new session named "deploy"
+$ tmux ls                 # list sessions
+$ tmux a                  # attach to the last session
+$ tmux a -t deploy        # attach to a specific one
+  &lt;C-b&gt; d                 # DETACH: leave it running
+# Windows
+  &lt;C-b&gt; c                 # new window (exit closes it)
+  &lt;C-b&gt; n / p / 0..9      # next / previous / jump to N
+  &lt;C-b&gt; ,                 # rename window
+# Panes
+  &lt;C-b&gt; "  /  %           # split top-bottom / left-right
+  &lt;C-b&gt; &lt;arrow&gt;           # move between panes
+  &lt;C-b&gt; z                 # zoom current pane (toggle)
+  &lt;C-b&gt; [                 # scrollback mode (q to leave)</pre></div>
+  </section>
+
+  <section>
+    <h2>Where you'd use it</h2>
+    <ul>
+      <li><strong>Long server tasks:</strong> <code>ssh server</code>, <code>tmux new -s migrate</code>, run <code>python manage.py migrate</code> or <code>dotnet ef database update</code>. Connection drops? <code>ssh server</code>, <code>tmux a -t migrate</code>.</li>
+      <li><strong>Local layout:</strong> one window with panes for <code>dotnet watch</code>, <code>npm run dev</code> and a free shell. Works the same in WSL.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Try it</h2>
+    <ol class="steps">
+      <li><code>tmux new -s play</code>, run <code>top</code>, <code>&lt;C-b&gt; d</code>. Close the terminal window, open a new one, <code>tmux a -t play</code>: is <code>top</code> still running?</li>
+      <li><code>tmux kill-session -t play</code> to clean up.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz data-qid="t1">
+      <p class="quiz-question">Explain to a teammate why running a long command over SSH inside tmux is safer than running it with <code>&amp;</code>. Use SIGHUP, parent, detach and reattach.</p>
+      <div class="quiz-answer">With <code>&amp;</code>, the job's parent is the shell of your SSH session; when the connection drops that shell gets SIGHUP and the job dies. Inside tmux, the shell's parent is the tmux server, which isn't tied to the connection, so you can detach (or lose the network) and the job keeps running. Later you reattach and see its live output and scrollback.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="q1">
+      <p class="quiz-question">Your SSH connection drops while a database migration runs inside tmux on the server. What state is the migration in?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">Still running; SSH in again and run <code>tmux a</code> to reattach.</button>
+        <button data-answer="wrong">Killed by SIGHUP, like any terminal job.</button>
+        <button data-answer="wrong">Paused until you reconnect.</button>
+        <button data-answer="wrong">Moved to <code>nohup.out</code>.</button>
+      </div>
+      <div class="quiz-explanation">The shell's parent is the tmux server on the remote machine, which never received a hang-up. Only the viewer (your SSH session) went away.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t2">
+      <p class="quiz-question">In tmux, how do you leave a session running and get back to it later? Give the key and the command.</p>
+      <div class="quiz-answer">Detach with <code>Ctrl-b</code> then <code>d</code>. Reattach with <code>tmux a</code> (last session) or <code>tmux a -t NAME</code>; <code>tmux ls</code> lists sessions.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

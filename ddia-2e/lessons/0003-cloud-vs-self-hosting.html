@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cloud vs Self-Hosting</title>
+<link rel="stylesheet" href="../assets/course.css">
+<script src="../assets/widgets.js" defer></script>
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.1 Trade-Offs in Data Systems Architecture</p>
+  <h1>Cloud vs Self-Hosting</h1>
+  <p class="dek">Build or buy, run it yourself or rent it: when each wins, and what "cloud native" changes inside a database.</p>
+</header>
+
+<section>
+<p>Rule of thumb: do in-house what's a <b>core competency</b> or competitive advantage; outsource what's routine. For software there are two separate choices: <i>who builds it</i> and <i>who runs it</i>.</p>
+
+<figure>
+<svg viewBox="0 0 640 140" role="img" aria-label="Spectrum from bespoke software you write and run, through off-the-shelf software you self-host on premises or on IaaS VMs, to cloud services and SaaS run by a vendor">
+  <defs><linearGradient id="spec" x1="0" x2="1"><stop offset="0" stop-color="var(--rel)"/><stop offset="1" stop-color="var(--sca)"/></linearGradient></defs>
+  <rect x="10" y="40" width="620" height="16" rx="8" fill="url(#spec)" opacity=".8"/>
+  <text x="10" y="28" font-size="12" font-weight="700" fill="var(--rel)">more control · more work</text>
+  <text x="630" y="28" text-anchor="end" font-size="12" font-weight="700" fill="var(--sca)">less control · less work</text>
+  <g font-size="12">
+    <circle cx="70" cy="48" r="7" fill="var(--card)" stroke="var(--fg)"/><text x="70" y="80" text-anchor="middle" font-weight="700">Bespoke</text><text x="70" y="96" text-anchor="middle" font-size="10" class="muted-t">you write &amp; run it</text>
+    <circle cx="240" cy="48" r="7" fill="var(--card)" stroke="var(--fg)"/><text x="240" y="80" text-anchor="middle" font-weight="700">Self-hosted</text><text x="240" y="96" text-anchor="middle" font-size="10" class="muted-t">off-the-shelf, on premises</text><text x="240" y="110" text-anchor="middle" font-size="10" class="muted-t">or IaaS VM</text>
+    <circle cx="420" cy="48" r="7" fill="var(--card)" stroke="var(--fg)"/><text x="420" y="80" text-anchor="middle" font-weight="700">Managed cloud service</text><text x="420" y="96" text-anchor="middle" font-size="10" class="muted-t">vendor operates it</text>
+    <circle cx="570" cy="48" r="7" fill="var(--card)" stroke="var(--fg)"/><text x="570" y="80" text-anchor="middle" font-weight="700">SaaS</text><text x="570" y="96" text-anchor="middle" font-size="10" class="muted-t">web UI / API only</text>
+  </g>
+</svg>
+<figcaption>"On premises" includes a rented datacenter rack: what matters is who operates the software.</figcaption>
+</figure>
+
+<div class="grid">
+  <div class="card"><h4 style="color:var(--good)">👍 Cloud wins when…</h4><p>You don't know how to run the system (hiring and training cost a lot); load <b>varies a lot</b> (interactive analytics: huge bursts, then idle); you want a specialist's operational expertise.</p></div>
+  <div class="card"><h4>🏠 Self-hosting wins when…</h4><p>You have the skills and load is <b>predictable</b> (often cheaper), you need deep tuning for your workload, or you have specialist hardware needs.</p></div>
+  <div class="card"><h4 style="color:var(--bad)">👎 What cloud takes away</h4><p>Missing feature: ask politely. Outage: wait. Bug: no internals or server logs. Shutdown, price hike or product change: forced migration (<b>vendor lock-in</b>). Sanctions risk across borders. You must trust them with security.</p></div>
+</div>
+
+<div class="widget" data-widget="provisioning"></div>
+</section>
+
+<section>
+<h2>Cloud native architecture</h2>
+<p>Systems designed <i>for</i> the cloud, not just hosted there: Aurora, Spanner, Azure SQL Hyperscale (OLTP); Snowflake, BigQuery (analytics). Compare self-hosted MySQL, PostgreSQL, ClickHouse.</p>
+
+<figure>
+<svg viewBox="0 0 640 200" role="img" aria-label="Traditional: one machine holds CPU, RAM and disk. Cloud native: stateless compute nodes read from a separate durable storage service such as object storage; local disk is only a cache">
+  <text x="140" y="20" text-anchor="middle" font-size="13" font-weight="700">Traditional</text>
+  <rect x="70" y="35" width="140" height="130" rx="12" class="box"/>
+  <rect x="90" y="50" width="100" height="30" rx="6" fill="var(--rel)" opacity=".8"/><text x="140" y="70" text-anchor="middle" font-size="12" class="white">CPU + RAM</text>
+  <rect x="90" y="92" width="100" height="56" rx="6" fill="var(--sca)" opacity=".8"/><text x="140" y="124" text-anchor="middle" font-size="12" class="white">local disk</text>
+  <text x="140" y="185" text-anchor="middle" font-size="11" class="muted-t">storage + compute on one machine</text>
+  <line x1="300" y1="15" x2="300" y2="190" stroke="var(--rule)"/>
+  <text x="470" y="20" text-anchor="middle" font-size="13" font-weight="700">Cloud native · disaggregated</text>
+  <g>
+    <rect x="345" y="35" width="70" height="46" rx="8" fill="var(--rel)" opacity=".8"/><text x="380" y="56" text-anchor="middle" font-size="11" class="white">compute</text><text x="380" y="71" text-anchor="middle" font-size="9" class="white">disk = cache</text>
+    <rect x="435" y="35" width="70" height="46" rx="8" fill="var(--rel)" opacity=".8"/><text x="470" y="56" text-anchor="middle" font-size="11" class="white">compute</text><text x="470" y="71" text-anchor="middle" font-size="9" class="white">disk = cache</text>
+    <rect x="525" y="35" width="70" height="46" rx="8" fill="var(--rel)" opacity=".8"/><text x="560" y="56" text-anchor="middle" font-size="11" class="white">compute</text><text x="560" y="71" text-anchor="middle" font-size="9" class="white">disk = cache</text>
+  </g>
+  <path d="M380 81 L450 115 M470 81 V115 M560 81 L490 115" class="line"/>
+  <rect x="360" y="117" width="220" height="48" rx="10" fill="var(--sca)" opacity=".85"/>
+  <text x="470" y="138" text-anchor="middle" font-size="12" font-weight="700" class="white">storage service</text>
+  <text x="470" y="155" text-anchor="middle" font-size="10" class="white">object store (S3, Blob, R2)</text>
+  <text x="470" y="185" text-anchor="middle" font-size="11" class="muted-t">scale compute and storage independently</text>
+</svg>
+<figcaption><b>Separation of storage and compute.</b> A local disk vanishes when an instance fails or is resized, so it is only an ephemeral cache. Durable data goes to a storage service, at the price of network transfer.</figcaption>
+</figure>
+
+<ul>
+  <li><b>Layering</b>: cloud services build on lower-level ones (Snowflake on S3). If a high-level service fits your use case, use it; if not, build from lower-level blocks.</li>
+  <li><b>Multitenancy</b>: many customers share hardware and service. Better utilization and easier scaling, but needs careful performance and security isolation.</li>
+  <li><b>Ops still matters</b> (DevOps/SRE): automation, ephemeral VMs, learning from incidents. In the cloud, <b>capacity planning becomes financial planning</b> and performance tuning becomes cost optimization.</li>
+</ul>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">Why do cloud native databases treat a VM's local disk as only a cache?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">It's lost if the instance fails or is moved</button>
+    <button data-answer="wrong">Local disks are slower than the network</button>
+    <button data-answer="wrong">Cloud providers forbid writing to them</button>
+    <button data-answer="wrong">Local disks cannot be used with RAID</button>
+  </div>
+  <div class="quiz-explanation">When an instance dies or is replaced by a bigger or smaller one on another machine, its local disk is gone. Durable data lives in a separate storage service.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-case">Your team runs a database it knows well, and its load is steady all year. Another team needs an interactive analytics tool that is hammered for an hour after each exam period, then sits idle.</p>
+  <p class="quiz-question">Which of the two fits self-hosting and which fits a cloud service, by the book's rule of thumb?</p>
+  <div class="quiz-answer">The steady, well-understood database: self-hosting is often cheaper when you have the skills and predictable load. The bursty analytics tool: cloud, because you pay for capacity only while it's used and avoid buying hardware for peaks.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">Name four kinds of control you give up by using a cloud service instead of self-hosting.</p>
+  <div class="quiz-answer">You can't add missing features (only ask), you wait out outages, you can't inspect internals or server logs when debugging, and you face forced migration if the service shuts down, changes or gets pricier (vendor lock-in). Also: sanctions risk and trusting the vendor with security.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">What does "separation of storage and compute" mean in cloud native databases, with one benefit and one cost?</p>
+  <div class="quiz-answer">Durable data lives in a separate storage service (e.g. object storage); compute nodes are stateless and use local disk only as a cache. Benefit: scale compute and storage independently and recover fast from node loss. Cost: data travels over the network.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

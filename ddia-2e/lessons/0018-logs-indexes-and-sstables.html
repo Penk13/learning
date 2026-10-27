@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logs, Indexes and SSTables</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.4 Storage and Retrieval</p>
+  <h1>Logs, Indexes and SSTables</h1>
+  <p class="dek">Appending is the cheapest write; finding things again needs an index; sorting the log makes the index small.</p>
+</header>
+
+<section>
+<h2>The world's simplest database</h2>
+<pre><code>db_set () { echo "$1,$2" &gt;&gt; database; }
+db_get () { grep "^$1," database | sed -e "s/^$1,//" | tail -n 1; }</code></pre>
+<div class="grid">
+  <div class="card" style="border-top:4px solid var(--good)"><h4>✍ Writes: great</h4><p>Appending to a file is the cheapest write there is. An update appends a new line; the old one stays. Many databases use the same idea internally: a <b>log</b>, an append-only sequence of records (not application log text).</p></div>
+  <div class="card" style="border-top:4px solid var(--bad)"><h4>🔍 Reads: awful</h4><p><code>db_get</code> scans the whole file every time: <b>O(n)</b>. To find things fast you need an <b>index</b>.</p></div>
+</div>
+<p class="big-idea">An index is <b>derived data</b>. It speeds up reads, but costs disk space and <b>slows down every write</b>, because it must be updated too. So you choose indexes from your query patterns instead of indexing everything.</p>
+</section>
+
+<section>
+<h2>Step 1: a hash map of byte offsets</h2>
+<p>Keep appending to the log, plus an in-memory <b>hash map</b> from each key to the byte offset of its latest value. A read: look up the offset, seek, read. Problems: the log grows forever, the map must be rebuilt by scanning the log after a restart, the map must fit in RAM, and <b>range queries</b> (keys 10000–19999) need a lookup per key. So real databases rarely use hash indexes.</p>
+
+<h2>Step 2: SSTables (Sorted String Tables)</h2>
+<p>Store key-value pairs <b>sorted by key</b>, each key once. Now you don't need every key in memory: group pairs into blocks of a few KB and keep only the <b>first key of each block</b> in a <b>sparse index</b>. Blocks can also be compressed (less disk and I/O, a bit more CPU).</p>
+
+<figure>
+<svg viewBox="0 0 640 190" role="img" aria-label="An SSTable split into sorted, compressed blocks. A sparse index holds only the first key of each block: handbag, handsome, hangout. Looking up handiwork, which is not in the index, means seeking to the handbag block and scanning it.">
+  <defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>
+  <text x="90" y="18" text-anchor="middle" font-size="12" font-weight="700">Sparse index</text>
+  <rect x="20" y="28" width="140" height="120" rx="8" class="box"/>
+  <text x="40" y="58" font-size="12" font-family="var(--mono)">handbag  → 0</text>
+  <text x="40" y="88" font-size="12" font-family="var(--mono)">handsome → 4096</text>
+  <text x="40" y="118" font-size="12" font-family="var(--mono)">hangout  → 8192</text>
+  <text x="400" y="18" text-anchor="middle" font-size="12" font-weight="700">SSTable file (sorted by key)</text>
+  <rect x="220" y="28" width="380" height="36" rx="6" fill="var(--accent)" opacity=".85"/>
+  <text x="410" y="51" text-anchor="middle" font-size="11" class="white" font-family="var(--mono)">handbag · handcrafted · handed · handiwork · handlebar</text>
+  <rect x="220" y="72" width="380" height="36" rx="6" fill="var(--card-2)" stroke="var(--rule)"/>
+  <text x="410" y="95" text-anchor="middle" font-size="11" font-family="var(--mono)">handsome · handstand · handwritten · handy</text>
+  <rect x="220" y="116" width="380" height="36" rx="6" fill="var(--card-2)" stroke="var(--rule)"/>
+  <text x="410" y="139" text-anchor="middle" font-size="11" font-family="var(--mono)">hangout · hangover · hangry …</text>
+  <path d="M160 54 H218" class="line" marker-end="url(#a1)"/>
+  <path d="M160 84 L218 90" class="line" marker-end="url(#a1)"/>
+  <path d="M160 114 L218 134" class="line" marker-end="url(#a1)"/>
+  <text x="320" y="178" text-anchor="middle" font-size="11" class="muted-t">find "handiwork": sorts between handbag and handsome → seek to 0, scan one block</text>
+</svg>
+<figcaption>The sparse index itself can be an immutable B-tree or a trie. Sorted order also makes range queries easy: seek to the start key and read on.</figcaption>
+</figure>
+
+<p>The catch: you can't append to a sorted file without breaking the order. How writes stay sorted is the LSM-tree, next.</p>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">You add three new secondary indexes to a busy table. What is the main cost?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">Every write must also update each index</button>
+    <button data-answer="wrong">Point reads become slower overall</button>
+    <button data-answer="wrong">Range queries stop working</button>
+    <button data-answer="wrong">The table can no longer be backed up</button>
+  </div>
+  <div class="quiz-explanation">Indexes are derived data: they speed up the reads they serve but use disk space and add work to every insert, update and delete.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">A storage engine keeps an in-memory hash map from each key to its byte offset in an append-only log. Name three limitations of this design.</p>
+  <div class="quiz-answer">The log grows forever unless compacted; the hash map must fit in RAM; after a restart the map must be rebuilt by scanning the log; and range queries are impossible without looking up every key individually.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-case">An SSTable's sparse index lists only "handbag → 0" and "handsome → 4096". You look up "handiwork".</p>
+  <p class="quiz-question">How does the lookup proceed, and why does sorting make a sparse index possible?</p>
+  <div class="quiz-answer">"handiwork" sorts between handbag and handsome, so it can only be in the block starting at offset 0: seek there and scan that one small block. Because keys are sorted, knowing each block's first key tells you which block a key must be in, so not every key needs to be in memory.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

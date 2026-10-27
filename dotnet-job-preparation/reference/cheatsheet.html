@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>.NET Cheat Sheet</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+  <div class="lesson-shell">
+    <header class="lesson-header">
+      <div class="eyebrow">.NET job preparation · Cheat sheet</div>
+      <h1>.NET cheat sheet</h1>
+      <p class="dek">Interview-ready models, one section per lesson.</p>
+    </header>
+
+    <section>
+      <h2>Request pipeline <small>(0001)</small></h2>
+      <p><strong>An ASP.NET Core request pipeline is an ordered sequence of request delegates.</strong> Each middleware can do work before and after the next delegate, or stop the request by not calling it.</p>
+      <div class="flow" aria-label="Request enters middleware A, then middleware B, then terminal delegate; response unwinds in reverse order">
+        <div class="flow-node">1 · Middleware A</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">2 · Middleware B</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">3 · Terminal delegate</div>
+      </div>
+      <p class="caption">Forward: A before → B before → terminal. Return: B after → A after.</p>
+      <div class="table-wrap"><table>
+        <tr><th>Term</th><th>Meaning</th></tr>
+        <tr><td>Middleware</td><td>Handles part of the request/response journey; may invoke the next component.</td></tr>
+        <tr><td>Request delegate</td><td>The callable that handles an HTTP request at one point in the pipeline.</td></tr>
+        <tr><td>Short-circuit</td><td>Stopping traversal by not invoking the next delegate.</td></tr>
+        <tr><td>Terminal middleware</td><td>Ends traversal; <code>Run</code> creates a terminal delegate. <code>Use</code> gets a <code>next</code> to call.</td></tr>
+      </table></div>
+      <ul>
+        <li>Registration order on the way in; reverse order on the way out.</li>
+        <li>Code after <code>await next</code> runs while the response unwinds (timing, logging).</li>
+        <li>Order is behavior: exception handling goes early so it can observe later failures.</li>
+        <li>Interview words: <em>ordered</em>, <em>next delegate</em>, <em>before/after</em>, <em>short-circuit</em>.</li>
+      </ul>
+      <p class="caption">Source: <a href="https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware?view=aspnetcore-10.0&amp;preserve-view=true" target="_blank" rel="noreferrer">ASP.NET Core middleware — Microsoft Learn</a>.</p>
+    </section>
+  </div>
+</body>
+</html>

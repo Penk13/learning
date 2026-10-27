@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Systems, Law and Society</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.1 Trade-Offs in Data Systems Architecture</p>
+  <h1>Data Systems, Law and Society</h1>
+  <p class="dek">Architecture is shaped not only by business needs but by the rights of the people whose data you hold.</p>
+</header>
+
+<section>
+<p>Laws such as the GDPR (EU, 2018), the CCPA and the EU AI Act set rules for personal data, and automated decisions about loans, jobs or policing affect people's lives. These rules reach deep into system design.</p>
+
+<div class="grid">
+  <div class="card"><h4>🗑 Right to be forgotten</h4><p>GDPR lets people demand erasure of their data. But many systems are built on <b>immutable, append-only logs</b>. How do you delete from the middle of an immutable file, or from <b>derived data</b> such as ML training sets? There's no settled answer yet.</p></div>
+  <div class="card"><h4>💸 True cost of storing data</h4><p>Not just the storage bill: liability if it leaks, reputational damage, fines for non-compliance, government demands for access, and real safety risks for users (e.g. location history).</p></div>
+  <div class="card"><h4>✂ Data minimization</h4><p><i>Datensparsamkeit</i>: some data isn't worth keeping, so delete it. The opposite of "store everything just in case". It fits the GDPR: collect only for a specified purpose, don't reuse it for other purposes, don't keep it longer than needed.</p></div>
+</div>
+
+<p>Industry standards push the same way: <b>PCI</b> for card payments, <b>SOC 2 Type 2</b> audits for software vendors. The book returns to ethics in its final chapter.</p>
+
+<div class="callout"><b>Local note (not from the book).</b> Indonesia has its own Personal Data Protection Law (UU PDP, No. 27/2022). Check specifics with the relevant BINUS compliance or legal function rather than assuming.</div>
+
+<p class="big-idea">Before storing personal data, ask: why do we keep it, for how long, and can we actually delete it everywhere, including every derived copy?</p>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Why is the GDPR "right to be forgotten" technically hard for many data systems?</p>
+  <div class="quiz-answer">Many systems are built on immutable, append-only logs, which can't simply be edited in the middle. And the data is copied into derived systems (caches, indexes, warehouses, ML training sets), so it must be found and removed everywhere. There is no settled solution.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">What is data minimization (Datensparsamkeit), and which GDPR principles does it match?</p>
+  <div class="quiz-answer">Keeping only the data you actually need and deleting the rest, instead of "store everything just in case". It matches the GDPR's purpose limitation (collect for a specified purpose, don't reuse for others) and storage limitation (don't keep it longer than necessary).</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-case">A team wants to log every user's location history indefinitely "because storage is cheap".</p>
+  <p class="quiz-question">Which costs of storing that data are they ignoring?</p>
+  <div class="quiz-answer">Liability and reputational damage if it leaks, fines for non-compliance with data protection law, exposure to government demands for the data, and real safety risks to users whose location history could be misused.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

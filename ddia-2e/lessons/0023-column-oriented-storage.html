@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Column-Oriented Storage</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.4 Storage and Retrieval</p>
+  <h1>Column-Oriented Storage</h1>
+  <p class="dek">Analytics reads a few columns of billions of rows, so store each column together, compress it, and sort it well.</p>
+</header>
+
+<section>
+<p>A warehouse and an OLTP database both speak SQL, but their internals differ because their queries differ. <b>HTAP</b> products (SQL Server, SAP HANA, SingleStore) increasingly run <i>two separate engines</i> behind one SQL interface. Cloud warehouses (BigQuery, Redshift, Snowflake) keep data in <b>object storage</b> and decouple storage from compute. Open-source warehouses are now separate parts:</p>
+<div class="grid">
+  <div class="card"><h4>⚙ Query engine</h4><p>Parse, plan, run SQL in parallel: Trino, Presto, DataFusion.</p></div>
+  <div class="card"><h4>🧱 Storage format</h4><p>How rows become bytes in files: Parquet, ORC, Lance.</p></div>
+  <div class="card"><h4>📒 Table format</h4><p>Which immutable files form a table; inserts, deletes, <b>time travel</b>: Iceberg, Delta.</p></div>
+  <div class="card"><h4>🗂 Data catalog</h4><p>Which tables exist; also discovery and governance: Polaris, Unity Catalog.</p></div>
+</div>
+</section>
+
+<section>
+<h2>Rows vs columns</h2>
+<p>A fact table can have 100+ columns and trillions of rows, but a typical analytics query touches <b>4–5 columns</b>. A row store must still load every full row. A <b>column store</b> keeps each column's values together, so a query reads only the columns it needs.</p>
+<figure>
+<svg viewBox="0 0 640 230" role="img" aria-label="The same fact_sales table stored row by row versus column by column. A query using date_key, product_sk and quantity reads every full row in a row store, but only three column files in a column store.">
+  <text x="150" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="var(--rel)">Row-oriented (OLTP)</text>
+  <g font-size="10" font-family="var(--mono)">
+    <rect x="10" y="26" width="280" height="26" rx="4" fill="var(--rel)" opacity=".8"/><text x="18" y="43" class="white">row1: 140102 · 69 · 4 · 2 · 1 · 13.99 …</text>
+    <rect x="10" y="58" width="280" height="26" rx="4" fill="var(--rel)" opacity=".8"/><text x="18" y="75" class="white">row2: 140102 · 69 · 5 · 3 · 3 · 14.99 …</text>
+    <rect x="10" y="90" width="280" height="26" rx="4" fill="var(--rel)" opacity=".8"/><text x="18" y="107" class="white">row3: 140102 · 74 · 3 · 1 · 1 · 2.49 …</text>
+    <rect x="10" y="122" width="280" height="26" rx="4" fill="var(--rel)" opacity=".8"/><text x="18" y="139" class="white">row4: 140103 · 31 · 2 · 4 · 1 · 6.49 …</text>
+  </g>
+  <text x="150" y="172" text-anchor="middle" font-size="11" class="muted-t">query reads ALL bytes of every row</text>
+  <line x1="320" y1="10" x2="320" y2="220" stroke="var(--rule)"/>
+  <text x="480" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sca)">Column-oriented (OLAP)</text>
+  <g font-size="10" font-family="var(--mono)">
+    <rect x="340" y="26" width="280" height="22" rx="4" fill="var(--sca)" opacity=".9"/><text x="348" y="41" class="white">date_key:   140102 140102 140102 140103</text>
+    <rect x="340" y="54" width="280" height="22" rx="4" fill="var(--sca)" opacity=".9"/><text x="348" y="69" class="white">product_sk: 69 69 74 31</text>
+    <rect x="340" y="82" width="280" height="22" rx="4" fill="var(--card-2)" stroke="var(--rule)"/><text x="348" y="97">store_sk:   4 5 3 2</text>
+    <rect x="340" y="110" width="280" height="22" rx="4" fill="var(--card-2)" stroke="var(--rule)"/><text x="348" y="125">customer_sk: 2 3 1 4</text>
+    <rect x="340" y="138" width="280" height="22" rx="4" fill="var(--sca)" opacity=".9"/><text x="348" y="153" class="white">quantity:   1 3 1 1</text>
+    <rect x="340" y="166" width="280" height="22" rx="4" fill="var(--card-2)" stroke="var(--rule)"/><text x="348" y="181">net_price:  13.99 14.99 2.49 6.49</text>
+  </g>
+  <text x="480" y="210" text-anchor="middle" font-size="11" class="muted-t">query reads only the 3 coloured columns</text>
+</svg>
+</figure>
+<p>Every column stores rows in the <b>same order</b>, so the k-th entry of each column rebuilds row k. In practice the table is split into blocks (often by time range), each storing its columns. Snowflake, DuckDB, Druid, Parquet and Arrow work this way.</p>
+<div class="callout"><b>Don't confuse</b> column-oriented storage with the <b>wide-column</b> (column-family) model of Bigtable and HBase. Wide-column databases are actually <b>row-oriented</b>.</div>
+</section>
+
+<section>
+<h2>Compression: bitmaps and run-length encoding</h2>
+<figure>
+<svg viewBox="0 0 640 200" role="img" aria-label="Bitmap encoding of the product_sk column: one bitmap per distinct value with one bit per row, then each bitmap run-length encoded. Filters combine bitmaps with bitwise OR for IN lists and bitwise AND across columns.">
+  <text x="10" y="20" font-size="12" font-weight="700">product_sk:</text>
+  <text x="160" y="20" font-size="12" font-family="var(--mono)">69 69 69 74 31 31 31 31 29 30 30 31 31 31 68 69 69</text>
+  <g font-size="11" font-family="var(--mono)">
+    <text x="10" y="54">= 29:</text><text x="160" y="54">0 0 0 0 0 0 0 0 <tspan fill="var(--accent)" font-weight="700">1</tspan> 0 0 0 0 0 0 0 0</text><text x="470" y="54" class="muted-t">RLE: 8, 1</text>
+    <text x="10" y="78">= 30:</text><text x="160" y="78">0 0 0 0 0 0 0 0 0 <tspan fill="var(--accent)" font-weight="700">1 1</tspan> 0 0 0 0 0 0</text><text x="470" y="78" class="muted-t">RLE: 9, 2</text>
+    <text x="10" y="102">= 31:</text><text x="160" y="102">0 0 0 0 <tspan fill="var(--accent)" font-weight="700">1 1 1 1</tspan> 0 0 0 <tspan fill="var(--accent)" font-weight="700">1 1 1</tspan> 0 0 0</text><text x="470" y="102" class="muted-t">RLE: 4, 4, 3, 3</text>
+    <text x="10" y="126">= 68:</text><text x="160" y="126">0 0 0 0 0 0 0 0 0 0 0 0 0 0 <tspan fill="var(--accent)" font-weight="700">1</tspan> 0 0</text><text x="470" y="126" class="muted-t">RLE: 14, 1</text>
+    <text x="10" y="150">= 69:</text><text x="160" y="150"><tspan fill="var(--accent)" font-weight="700">1 1 1</tspan> 0 0 0 0 0 0 0 0 0 0 0 0 <tspan fill="var(--accent)" font-weight="700">1 1</tspan></text><text x="470" y="150" class="muted-t">RLE: 0, 3, 12, 2</text>
+  </g>
+  <text x="10" y="182" font-size="11" class="muted-t"><tspan font-weight="700" fill="var(--ink)">IN (31, 68, 69)</tspan> → OR three bitmaps. <tspan font-weight="700" fill="var(--ink)">product = 30 AND store = 3</tspan> → AND bitmaps of two columns.</text>
+</svg>
+<figcaption>One <b>bitmap per distinct value</b>, one bit per row. Sparse bitmaps are <b>run-length encoded</b> ("n zeros, then m ones…"). <b>Roaring bitmaps</b> switch between the two forms, whichever is smaller. AND works across columns because every column stores rows in the same order.</figcaption>
+</figure>
+</section>
+
+<section>
+<h2>Sort order and writes</h2>
+<ul>
+  <li>Rows can be stored <b>sorted</b>, like an SSTable. Sort whole rows, never each column separately, or rows can't be rebuilt. Pick sort keys from common queries: <code>date_key</code> first if queries target date ranges.</li>
+  <li>The <b>first sort key</b> gets long runs of equal values, so RLE shrinks it to kilobytes even for billions of rows. Later sort keys compress less.</li>
+  <li>Inserting one row into the middle of sorted, compressed columns would rewrite everything. So writes are <b>bulk</b>, LSM-style: an in-memory, row-oriented sorted store merged into new column files in batches. Queries combine both, so new data is visible immediately.</li>
+</ul>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">A report query uses 4 of a fact table's 150 columns over 2 billion rows. Why is a column store much faster than a row store here?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">It reads only the 4 columns the query needs</button>
+    <button data-answer="wrong">It keeps every row in a hash index</button>
+    <button data-answer="wrong">It stores each row as one document</button>
+    <button data-answer="wrong">It sorts each column independently</button>
+  </div>
+  <div class="quiz-explanation">Each column's values are stored together, so the query skips the other 146 columns, and columns compress well. Columns are never sorted independently, or rows couldn't be rebuilt.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">How does bitmap encoding compress a column with few distinct values, and how do filters like <code>IN (31, 68)</code> or conditions on two columns use it?</p>
+  <div class="quiz-answer">Store one bitmap per distinct value, with bit k set if row k has that value; sparse bitmaps are run-length encoded. An IN list is a bitwise OR of the values' bitmaps; conditions on two columns are a bitwise AND of their bitmaps, which works because every column stores rows in the same order.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">In a sorted column store, why must whole rows be sorted rather than each column on its own, and which column compresses best?</p>
+  <div class="quiz-answer">Rows are rebuilt by taking the k-th entry of every column; sorting columns independently would break that alignment. The first sort key compresses best, because sorting creates long runs of equal values that run-length encoding shrinks dramatically.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">Is a wide-column database like HBase or Bigtable the same as a column-oriented store? Explain.</p>
+  <div class="quiz-answer">No. Wide-column (column-family) databases have rows with many, varying columns but store each row's values together, so they are row-oriented. Column-oriented stores keep all values of one column together, which suits analytics scans.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

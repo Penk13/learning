@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documents, Normalization and Joins</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.3 Data Models and Query Languages</p>
+  <h1>Documents, Normalization and Joins</h1>
+  <p class="dek">Store a fact once and join on read, or copy it everywhere and pay on write.</p>
+</header>
+
+<section>
+<h2>One-to-many data is a tree, and documents fit trees</h2>
+<p>A résumé: one user has many positions, many education entries and contact info. Relational: split into tables with foreign keys to <code>users</code>. Document: one JSON object with nested arrays.</p>
+
+<figure>
+<svg viewBox="0 0 640 250" role="img" aria-label="Left: a relational schema with a users table and separate positions, education and contact tables each holding a user_id foreign key. Right: one JSON document with nested positions and education arrays, forming a tree.">
+  <text x="150" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="var(--rel)">Relational · shredded into tables</text>
+  <rect x="95" y="30" width="110" height="46" rx="6" fill="var(--rel)" opacity=".85"/>
+  <text x="150" y="50" text-anchor="middle" font-size="12" font-weight="700" class="white">users</text>
+  <text x="150" y="66" text-anchor="middle" font-size="10" class="white">user_id, name, region_id</text>
+  <g fill="var(--card-2)" stroke="var(--rule)">
+    <rect x="5" y="130" width="92" height="46" rx="6"/><rect x="104" y="130" width="92" height="46" rx="6"/><rect x="203" y="130" width="92" height="46" rx="6"/>
+  </g>
+  <text x="51" y="157" text-anchor="middle" font-size="11" font-weight="700">positions</text>
+  <text x="150" y="157" text-anchor="middle" font-size="11" font-weight="700">education</text>
+  <text x="249" y="157" text-anchor="middle" font-size="11" font-weight="700">contact_info</text>
+  <path d="M51 130 L130 76 M150 130 V76 M249 130 L170 76" class="line"/>
+  <text x="150" y="206" text-anchor="middle" font-size="11" class="muted-t">fetch a profile = 4 queries</text>
+  <text x="150" y="222" text-anchor="middle" font-size="11" class="muted-t">or a multiway join</text>
+  <line x1="320" y1="10" x2="320" y2="240" stroke="var(--rule)"/>
+  <text x="480" y="16" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sca)">Document · one tree</text>
+  <rect x="425" y="30" width="110" height="40" rx="20" fill="var(--sca)" opacity=".85"/>
+  <text x="480" y="55" text-anchor="middle" font-size="12" font-weight="700" class="white">user 251</text>
+  <path d="M450 70 L380 110 M480 70 V110 M510 70 L580 110" class="line"/>
+  <rect x="340" y="110" width="80" height="30" rx="15" class="box"/><text x="380" y="130" text-anchor="middle" font-size="11">positions[]</text>
+  <rect x="440" y="110" width="80" height="30" rx="15" class="box"/><text x="480" y="130" text-anchor="middle" font-size="11">education[]</text>
+  <rect x="540" y="110" width="90" height="30" rx="15" class="box"/><text x="585" y="130" text-anchor="middle" font-size="11">contact_info</text>
+  <text x="480" y="216" text-anchor="middle" font-size="11" class="muted-t">fetch a profile = 1 read</text>
+  <text x="480" y="232" text-anchor="middle" font-size="11" class="muted-t">(better locality)</text>
+</svg>
+<figcaption>One-to-many is often <b>one-to-few</b>. With thousands of children, such as comments on a celebrity's post, embedding them gets unwieldy and separate tables win again.</figcaption>
+</figure>
+</section>
+
+<section>
+<h2>Normalized vs denormalized</h2>
+<p>Why store <code>region_id: "us:91"</code> instead of the text "Washington, DC"? A standard list gives consistent spelling, no ambiguity between places with the same name, one place to update a rename, localization into other languages, and smarter search. An ID means nothing to humans, so it never has to change; anything humans read may change, and every copy must change with it.</p>
+
+<div class="table-wrap">
+<table class="compare">
+  <tr><th></th><th>Normalized (store an ID)</th><th>Denormalized (copy the value)</th></tr>
+  <tr><td><b>Writes</b></td><td>Faster: one copy</td><td>Slower: update every copy, more disk</td></tr>
+  <tr><td><b>Reads</b></td><td>Slower: need joins</td><td>Faster: fewer joins</td></tr>
+  <tr><td><b>Risk</b></td><td>Join cost at very large scale</td><td>Copies drift apart; a crash halfway through an update needs atomic transactions across documents, or stream processing</td></tr>
+  <tr><td><b>Fits</b></td><td>OLTP at small-to-moderate scale (the usual default)</td><td>Analytics; hot read paths at huge scale</td></tr>
+</table>
+</div>
+
+<p class="big-idea">Denormalized data is <b>derived data</b>: you need a process that keeps the redundant copies up to date.</p>
+</section>
+
+<section>
+<h2>Joins at read time can scale: X's timelines</h2>
+<p>The materialized home timeline is a denormalized cache of a join. But X stores only <b>IDs</b> in it (post ID, sender ID), not post text or like counts. At read time the service <b>hydrates</b> the IDs, looking up post content and the sender's profile: a join in application code. Like counts change many times per second and people change profile photos; copying those into millions of timelines would be wrong and expensive. Hydration parallelizes well and its cost doesn't depend on follower counts.</p>
+<div class="callout tip">The best design often <b>mixes</b> the two: denormalize what rarely changes and is costly to compute; keep fast-changing data normalized.</div>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">Which statement about normalized data is generally true?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">Writes are cheaper; reads need joins</button>
+    <button data-answer="wrong">Reads are faster; writes are slower</button>
+    <button data-answer="wrong">No joins are needed to show a record</button>
+    <button data-answer="wrong">It suits read-only analytic logs best</button>
+  </div>
+  <div class="quiz-explanation">One copy makes writes cheap and consistent; reads resolve IDs with joins. Denormalized is the reverse, and analytics usually favours it.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-case">A course-registration page lists each class with its lecturer's name and a live "seats left" count.</p>
+  <p class="quiz-question">Which would you denormalize into the class listing, and which keep as a reference looked up at read time? Why?</p>
+  <div class="quiz-answer">Copy the lecturer name: it rarely changes, so a copy is cheap and safe (with a process to update it). Keep seats-left normalized or look it up live: it changes constantly during registration, so a copy would go stale immediately, like X's like counts.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">X's materialized home timelines store only post IDs and sender IDs. Why not the post text and like counts, and how are the IDs turned into a page?</p>
+  <div class="quiz-answer">Like counts and profiles change constantly, so copying them into millions of timelines would be stale and expensive in storage. At read time the IDs are hydrated by looking up the post and sender profile, a join in application code that parallelizes well and doesn't depend on follower counts.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">When does embedding one-to-many data in a single document fit well, and when does it stop fitting?</p>
+  <div class="quiz-answer">It fits a tree of one-to-few relationships that is usually loaded whole, like a profile with its positions: one read, good locality, no shredding into tables. It stops fitting when the children number in thousands (e.g. comments on a celebrity's post): the document gets unwieldy and separate tables work better.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

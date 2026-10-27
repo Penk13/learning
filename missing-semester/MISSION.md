@@ -17,11 +17,11 @@ I want to become more effective in my current .NET/React and Django development 
 
 ## Constraints
 
-- Lessons should be short and flexible: about 15–20 minutes, a few times per week.
+- Lessons should be short: at most 5 minutes of reading, followed by spaced-repetition cards.
 - Begin from first principles because most topics are familiar only at a basic level.
 - Practice should use safe, disposable WSL sandbox projects rather than work repositories.
 - Examples should connect back to real .NET/React and Django development where useful.
-- Use retrieval practice and immediate feedback instead of passive reading alone.
+- Use retrieval practice (cards reviewed on a spaced-repetition schedule) instead of passive reading alone.
 
 ## Out of scope
 

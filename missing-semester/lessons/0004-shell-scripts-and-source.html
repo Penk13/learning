@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shell Scripts: Run vs Source</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Command-line environment</div>
+    <h1>Shell Scripts: Run vs Source</h1>
+    <p class="dek">A script runs in a child unless you source it; strict mode makes its failures actually fail.</p>
+  </header>
+
+  <section>
+    <h2>Anatomy of a script</h2>
+    <div class="code-card"><pre>#!/usr/bin/env bash
+echo "script name: $0"
+echo "first arg:   $1"
+echo "all args:    $@"
+echo "arg count:   $#"
+exit 0</pre></div>
+    <ul>
+      <li><strong>Shebang</strong> <code>#!/usr/bin/env bash</code>: the first line tells the kernel which interpreter runs the file; <code>env</code> finds <code>bash</code> via <code>$PATH</code>.</li>
+      <li><strong><code>chmod +x script.sh</code></strong>: marks it executable. Without it: <em>Permission denied</em>.</li>
+      <li><strong><code>./script.sh</code></strong>: the current directory is not on <code>$PATH</code> (so a malicious <code>ls</code> file in some folder can't hijack you); <code>./</code> gives an explicit path.</li>
+      <li><strong><code>$1 $2 … $@ $#</code></strong>: the arguments, all of them, how many. <code>${1:-dev}</code> means "<code>$1</code>, or <code>dev</code> if missing".</li>
+      <li><strong><code>exit N</code></strong>: the one number handed back. <code>0</code> = success.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Run vs source</h2>
+    <div class="code-card"><pre>$ ./env.sh        # runs in a CHILD — its cd/export vanish when it exits
+$ source env.sh   # runs in THIS shell — its cd/export stick
+$ . env.sh        # same as source</pre></div>
+    <table>
+      <thead><tr><th></th><th><code>./env.sh</code> / <code>bash env.sh</code></th><th><code>source env.sh</code></th></tr></thead>
+      <tbody>
+        <tr><td>Runs in</td><td>a new child process</td><td>the current shell</td></tr>
+        <tr><td><code>cd</code>, <code>export</code> afterwards</td><td>lost</td><td>kept</td></tr>
+        <tr><td>Use for</td><td>tools, deploy steps</td><td><code>~/.bashrc</code>, virtualenv <code>activate</code></td></tr>
+      </tbody>
+    </table>
+    <p>This is why <code>source .venv/bin/activate</code> works and <code>bash .venv/bin/activate</code> seems to do nothing: <code>activate</code> changes <code>PATH</code> and sets <code>VIRTUAL_ENV</code>, and only sourcing applies that to your shell.</p>
+  </section>
+
+  <section>
+    <h2>Strict mode</h2>
+    <div class="code-card"><pre>#!/usr/bin/env bash
+set -euo pipefail</pre></div>
+    <ul>
+      <li><code>-e</code>: stop at the first failing command.</li>
+      <li><code>-u</code>: an unset variable is an error, not an empty string.</li>
+      <li><code>-o pipefail</code>: a pipeline fails if <em>any</em> part fails. By default only the last command's status counts.</li>
+    </ul>
+    <p>Not from the lecture, but standard practice (see <code>help set</code>). Without it, <code>python manage.py dumpdata | gzip &gt; backup.gz</code> "succeeds" even when the dump crashed, because <code>gzip</code> succeeded. Check scripts with <code>shellcheck</code>; a script past ~100 lines is usually better in Python.</p>
+  </section>
+
+  <section>
+    <h2>Try it</h2>
+    <ol class="steps">
+      <li>Write <code>env.sh</code> with <code>cd /tmp</code> and <code>export DEBUG=1</code>. Run <code>bash env.sh; pwd; echo "$DEBUG"</code>, then <code>source env.sh; pwd; echo "$DEBUG"</code>.</li>
+      <li><code>false | true; echo $?</code>, then <code>set -o pipefail</code> and repeat.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz data-qid="t1">
+      <p class="quiz-question">Why does <code>source .venv/bin/activate</code> change your terminal, while <code>bash .venv/bin/activate</code> seems to do nothing? Use the words child process, parent and environment.</p>
+      <div class="quiz-answer"><code>activate</code> changes <code>PATH</code> and sets <code>VIRTUAL_ENV</code>. <code>bash activate</code> runs it in a child process; the child's environment changes, then the child exits and the parent shell never sees them. <code>source</code> runs the file inside the current shell, so the changes stick.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t2">
+      <p class="quiz-case"><code>setup.sh</code> contains <code>cd /tmp</code> and <code>export DEBUG=1</code>. You run <code>./setup.sh</code> from <code>~/project</code>.</p>
+      <p class="quiz-question">Afterwards, what is your shell's directory and what is <code>$DEBUG</code>? What would change with <code>source setup.sh</code>?</p>
+      <div class="quiz-answer">Still in <code>~/project</code> and <code>DEBUG</code> is unset: <code>./setup.sh</code> ran in a child and its <code>cd</code> and <code>export</code> died with it. With <code>source setup.sh</code> you would be in <code>/tmp</code> with <code>DEBUG=1</code>.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t3">
+      <p class="quiz-case">A backup script runs <code>python manage.py dumpdata | gzip &gt; backup.gz</code>. The dump crashes, but the CI step is green.</p>
+      <p class="quiz-question">Why, and what one line fixes it?</p>
+      <div class="quiz-answer">By default a pipeline's exit status is that of its last command, and <code>gzip</code> succeeded. Put <code>set -euo pipefail</code> (at least <code>set -o pipefail</code>) at the top so any failing part fails the pipeline and stops the script.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

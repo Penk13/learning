@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Environment Variables</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Command-line environment</div>
+    <h1>Environment Variables</h1>
+    <p class="dek">Every program is a child of your shell: it gets a copy of the exported environment, and changes flow down, never back up.</p>
+  </header>
+
+  <section>
+    <h2>The model</h2>
+    <blockquote>
+      Running a program creates a <strong>child process</strong>. The child receives its arguments and a <strong>copy</strong> of the parent's exported environment. Its changes stay private. The only thing it hands back is its <strong>exit status</strong>.
+    </blockquote>
+    <div class="flow">
+      <div class="flow-node">your shell<br><code>export DEBUG=1</code></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">child gets a copy<br>args + env</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">child runs<br>changes stay private</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">returns one number<br><code>$?</code></div>
+    </div>
+    <p>This one rule explains why <code>cd</code> is a builtin, why a script can't change your terminal unless you <code>source</code> it, and why CI decides pass/fail by exit status alone.</p>
+  </section>
+
+  <section>
+    <h2>Shell variable vs environment variable</h2>
+    <div class="code-card"><pre>$ foo=bar                 # no spaces around =
+$ echo "$foo"             # bar
+$ bash -c 'echo $foo'     # (empty) — the child didn't get it
+$ export foo              # now it's an environment variable
+$ bash -c 'echo $foo'     # bar
+$ unset foo               # remove it</pre></div>
+    <p>A plain assignment is a <strong>shell variable</strong>, visible only in this shell. <code>export</code> marks it to be copied into every child. <code>printenv</code> lists what children will receive. Convention: environment variables are ALL_CAPS (<code>HOME</code>, <code>PATH</code>).</p>
+  </section>
+
+  <section>
+    <h2>One-shot variables</h2>
+    <div class="code-card"><pre>$ TZ=Asia/Jakarta date    # this date runs with Jakarta time
+$ echo "$TZ"              # (empty) — your shell never changed</pre></div>
+    <p><code>VAR=value cmd</code> puts the variable into that one child's environment and nowhere else. It is the clean way to switch an app's mode:</p>
+    <ul>
+      <li><code>DJANGO_SETTINGS_MODULE=config.settings.test python manage.py test</code> (module name depends on your project)</li>
+      <li><code>ASPNETCORE_ENVIRONMENT=Staging dotnet run</code> (a <code>launchSettings.json</code> profile can also set it; <code>--no-launch-profile</code> ignores profiles)</li>
+      <li><code>NODE_ENV=production npm run build</code></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Command substitution and quoting</h2>
+    <div class="code-card"><pre>$ today=$(date +%F)
+$ echo "backup-$today.sql"   # backup-2026-09-23.sql</pre></div>
+    <p><code>$(cmd)</code> runs <code>cmd</code> and is replaced by its stdout. Wrap expansions in double quotes (<code>"$today"</code>) so a value with spaces stays one argument.</p>
+  </section>
+
+  <section>
+    <h2>Security note</h2>
+    <p>Secrets belong in environment variables or a secret store, never hardcoded in scripts or committed <code>.env</code> files. But every child inherits what you export, so don't export tokens in a shell where you then run untrusted tools.</p>
+  </section>
+
+  <section>
+    <h2>Try it</h2>
+    <ol class="steps">
+      <li><code>foo=bar; bash -c 'echo "child: $foo"'</code>, then <code>export foo</code> and repeat.</li>
+      <li><code>TZ=Asia/Tokyo date</code>, then <code>date</code>, then <code>echo "TZ is: $TZ"</code>.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz data-qid="q1">
+      <p class="quiz-question">In bash you run <code>APP_ENV=staging</code> on its own line (no <code>export</code>), then <code>python app.py</code>. What does the Python program see for <code>APP_ENV</code>?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">Nothing: it is a shell variable and was never copied to the child.</button>
+        <button data-answer="wrong"><code>staging</code>, because children receive every shell variable.</button>
+        <button data-answer="wrong">An error, because Python cannot read shell variables.</button>
+        <button data-answer="wrong"><code>production</code>, the default for every program.</button>
+      </div>
+      <div class="quiz-explanation">Only exported variables are copied into children. Fix with <code>export APP_ENV=staging</code>, or one-shot: <code>APP_ENV=staging python app.py</code>.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t1">
+      <p class="quiz-question">In bash, what is the difference between <code>export TZ=Asia/Tokyo; date</code> and <code>TZ=Asia/Tokyo date</code>?</p>
+      <div class="quiz-answer">The first sets and exports <code>TZ</code> in the current shell, so every later child (not just <code>date</code>) gets it. The second puts <code>TZ</code> only into that one <code>date</code> process; the shell itself is unchanged afterwards.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t2">
+      <p class="quiz-question">State the parent/child rule for processes started from a shell: what does the child receive, and what can it give back?</p>
+      <div class="quiz-answer">The child receives its arguments and a copy of the parent's exported environment (and the working directory). Its own changes to environment or directory stay private. It hands back only its exit status.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

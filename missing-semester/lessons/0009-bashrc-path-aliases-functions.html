@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>.bashrc: PATH, Aliases and Functions</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Command-line environment</div>
+    <h1>.bashrc: PATH, Aliases and Functions</h1>
+    <p class="dek">Your shell rebuilds itself from a plain-text file at every start; edit the file to change every future terminal.</p>
+  </header>
+
+  <section>
+    <h2>The model</h2>
+    <blockquote>
+      Every new interactive bash <strong>sources</strong> its startup files (mainly <code>~/.bashrc</code>). Whatever they export, alias or define exists in that shell. To change "my shell", edit the dotfile, then open a new terminal or <code>source</code> it.
+    </blockquote>
+    <div class="flow">
+      <div class="flow-node">open terminal</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">bash sources<br><code>~/.bashrc</code></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">PATH, aliases,<br>functions, prompt</div>
+    </div>
+    <p><code>.bashrc</code> must be <em>sourced</em>, not run: a child process couldn't change your shell. A shell that's already open read the file at startup and won't notice later edits.</p>
+  </section>
+
+  <section>
+    <h2>Which file?</h2>
+    <p>A <strong>dotfile</strong> is a plain-text config file whose name starts with <code>.</code>, which hides it from <code>ls</code> (use <code>ls -a</code>). Bash's startup rules are complicated (login vs interactive shells). Practical rule: put aliases, functions, PATH changes and prompt settings in <code>~/.bashrc</code>. On Ubuntu (including WSL) the default <code>~/.profile</code> already sources <code>~/.bashrc</code> for login shells. Other common dotfiles: <code>~/.gitconfig</code>, <code>~/.ssh/config</code>, <code>~/.tmux.conf</code>, <code>~/.vimrc</code>.</p>
+  </section>
+
+  <section>
+    <h2>Extending PATH</h2>
+    <div class="code-card"><pre>export PATH="$PATH:$HOME/.dotnet/tools"   # append one folder</pre></div>
+    <p>Read it as "new PATH = old PATH + one folder, exported so children inherit it". Always keep <code>$PATH</code> in the value: <code>export PATH="/some/dir"</code> alone <em>replaces</em> the list and breaks <code>ls</code>, <code>git</code> and everything else in that shell. If a <code>dotnet tool install -g</code> command isn't found, <code>~/.dotnet/tools</code> is missing from PATH.</p>
+  </section>
+
+  <section>
+    <h2>Aliases</h2>
+    <div class="code-card"><pre>alias ll="ls -lh"        # no spaces around =
+alias gs="git status"
+alias mv="mv -i"         # safer default: ask before overwriting
+alias ll                 # show a definition
+\ls                      # bypass an alias once
+unalias ll               # remove it</pre></div>
+    <p>An alias is <strong>text replacement of the first word</strong>. It can't put an argument in the middle; use a function for that.</p>
+  </section>
+
+  <section>
+    <h2>Functions</h2>
+    <div class="code-card"><pre>mkcd() {                 # make a folder and enter it
+    mkdir -p "$1" &amp;&amp; cd "$1"
+}</pre></div>
+    <p>Functions take <code>$1</code>, <code>$@</code> and friends like scripts, but run <strong>in the current shell</strong>, so their <code>cd</code> and <code>export</code> stick. <code>venv() { source .venv/bin/activate; }</code> works for the same reason. <code>type gs mkcd</code> shows what each name is.</p>
+  </section>
+
+  <section>
+    <h2>History search</h2>
+    <p><strong>Ctrl-R</strong>, then type part of an old command. Ctrl-R again for older matches, Enter to run, an arrow key to edit first. With <code>fzf</code>'s shell integration, Ctrl-R becomes a fuzzy list.</p>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz data-qid="t1">
+      <p class="quiz-case">You add <code>alias gs="git status"</code> to <code>~/.bashrc</code>, save, and type <code>gs</code> in the same terminal: "command not found".</p>
+      <p class="quiz-question">Why, and what are the two fixes?</p>
+      <div class="quiz-answer">The running shell read <code>.bashrc</code> once, at startup; editing the file doesn't change it. Run <code>source ~/.bashrc</code> or open a new terminal.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t2">
+      <p class="quiz-question">An install guide says to add <code>export PATH="/opt/tool/bin"</code> to <code>~/.bashrc</code>. What goes wrong, and what should the line be?</p>
+      <div class="quiz-answer">It replaces the whole PATH, so <code>ls</code>, <code>git</code> and other commands are no longer found in that shell. Keep the existing list: <code>export PATH="$PATH:/opt/tool/bin"</code>.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="q1">
+      <p class="quiz-question">In bash you want <code>mkcd foo</code> to create <code>foo</code> and move your shell into it. Which works?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">A function <code>mkcd() { mkdir -p "$1" &amp;&amp; cd "$1"; }</code> in <code>~/.bashrc</code></button>
+        <button data-answer="wrong"><code>alias mkcd="mkdir -p $1 &amp;&amp; cd $1"</code></button>
+        <button data-answer="wrong">A script <code>mkcd.sh</code> run as <code>./mkcd.sh foo</code></button>
+        <button data-answer="wrong"><code>export mkcd="mkdir -p"</code></button>
+      </div>
+      <div class="quiz-explanation">Aliases can't use arguments in the middle. A script runs in a child, so its <code>cd</code> is lost. A function takes arguments and runs in your current shell.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

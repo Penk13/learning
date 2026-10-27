@@ -12,7 +12,7 @@ Read DDIA (2nd ed.) cover to cover and understand it well enough to apply its id
 - Can use DDIA vocabulary correctly in design reviews
 
 ## Constraints
-- One HTML lesson per chapter; diagrams/illustrations over long text
+- Short lessons for spaced repetition: one idea each (a section, sub-topic or case study), at most 5 minutes of reading, then 2–4 review cards; several lessons per chapter, planned in `ROADMAP.md`. Diagrams/illustrations over long text
 - Source: 2nd edition PDF (Kleppmann & Riccomini, O'Reilly, Feb 2026) — 14 chapters
 
 ## Out of scope

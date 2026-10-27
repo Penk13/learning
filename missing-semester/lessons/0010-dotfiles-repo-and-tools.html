@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dotfiles Repo and Installing Tools</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Command-line environment</div>
+    <h1>Dotfiles Repo and Installing Tools</h1>
+    <p class="dek">Keep your config in Git, symlink it into place, keep secrets out, and read installers before you run them.</p>
+  </header>
+
+  <section>
+    <h2>Organising dotfiles</h2>
+    <div class="code-card"><pre>~/dotfiles/              ← a Git repo
+  bashrc
+  gitconfig
+  tmux.conf
+  install.sh             ← creates symlinks:
+                             ln -sf ~/dotfiles/bashrc ~/.bashrc
+                             ln -sf ~/dotfiles/tmux.conf ~/.tmux.conf</pre></div>
+    <p>The real files live in one version-controlled folder; <strong>symlinks</strong> put them where programs expect them. You get one-command setup on a new machine, the same behaviour everywhere, easy syncing, and a history of every change. Read other people's dotfiles for ideas, but don't copy whole configs blindly.</p>
+  </section>
+
+  <section>
+    <h2>Secrets stay out</h2>
+    <p>Dotfiles repos are often public. Never put tokens, passwords or <code>export API_KEY=…</code> in them, and never commit <code>~/.ssh/</code> private keys. Keep secrets in a separate, uncommitted file that <code>.bashrc</code> sources only if it exists, or in a secret manager:</p>
+    <div class="code-card"><pre>[ -f ~/.bashrc.local ] &amp;&amp; source ~/.bashrc.local</pre></div>
+  </section>
+
+  <section>
+    <h2>Package managers</h2>
+    <div class="code-card"><pre>$ sudo apt install ripgrep fd-find tldr   # Ubuntu/WSL
+$ rg "TODO" src/                          # ripgrep: faster grep
+$ tldr tar                                # example-first help</pre></div>
+    <p>Package managers download, install and update for you: <code>apt</code> on Ubuntu/WSL, Homebrew on macOS, <code>dnf</code>, <code>pacman</code>. Names vary: on Ubuntu, <code>fd</code> is packaged as <code>fd-find</code> and the command is <code>fdfind</code>. Check with <code>apt search</code>. On a work laptop or server, follow your team's approved-software process first.</p>
+  </section>
+
+  <section>
+    <h2>The <code>curl | bash</code> warning</h2>
+    <div class="code-card"><pre># convenient but blind:
+curl -fsSL https://example.com/install.sh | bash
+# safer: download → read → run
+curl -fsSL https://example.com/install.sh -o install.sh
+less install.sh
+bash install.sh</pre></div>
+    <p>Piping straight into <code>bash</code> runs code you have never seen, with your permissions. The same rule applies to commands an AI tool generates for you: read before you run.</p>
+  </section>
+
+  <section>
+    <h2>Shells, plugins, terminals (brief)</h2>
+    <ul>
+      <li><strong>zsh plugins:</strong> syntax highlighting, autosuggestions, prompt themes. Single plugins instead of a big framework like oh-my-zsh keep startup fast. <code>fish</code> has many of these built in.</li>
+      <li><strong>AI in the shell:</strong> tools can turn English into commands, process messy text in a pipeline, or act as a whole "meta-shell".</li>
+      <li><strong>Terminal emulator:</strong> the window your shell runs in (on Windows, usually Windows Terminal). Tune font, colours, scrollback.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz data-qid="t1">
+      <p class="quiz-case">You get a fresh WSL install and already have a <code>~/dotfiles</code> Git repo with an install script.</p>
+      <p class="quiz-question">Describe how the repo gets your shell back to normal. Use the words symlink, startup, current shell and secrets.</p>
+      <div class="quiz-answer">Clone the repo and run its install script, which symlinks each file (e.g. <code>bashrc</code> → <code>~/.bashrc</code>) into place. Bash reads <code>~/.bashrc</code> at startup, so new terminals get the aliases, functions and PATH; an already-open terminal needs <code>source ~/.bashrc</code> to apply them in the current shell. Secrets were never in the repo; restore them from an uncommitted local file or a secret manager.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="q1">
+      <p class="quiz-question">What belongs in a public dotfiles repo?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">Aliases, prompt, PATH lines, tmux and git settings, with no secrets.</button>
+        <button data-answer="wrong">Everything in <code>~/</code>, including <code>~/.ssh</code>, as a full backup.</button>
+        <button data-answer="wrong">API tokens, as long as the repo is marked private.</button>
+        <button data-answer="wrong">Nothing; dotfiles shouldn't be version-controlled.</button>
+      </div>
+      <div class="quiz-explanation">Version-control your configuration, not your credentials. Load secrets from an uncommitted local file or a secret manager.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t2">
+      <p class="quiz-question">An install guide says to run <code>curl -fsSL https://example.com/install.sh | bash</code>. What is the risk, and what do you do instead?</p>
+      <div class="quiz-answer">It runs a script you have never read, with your permissions. Download it to a file (<code>curl … -o install.sh</code>), read it (<code>less install.sh</code>), then run it with <code>bash install.sh</code>.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

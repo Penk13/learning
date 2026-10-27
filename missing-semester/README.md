@@ -2,15 +2,16 @@
 
 A short, interactive learning workspace for making everyday .NET/React and Django development more effective through better command-line, debugging, Git, shipping, AI-assisted, and code-quality workflows.
 
-> **Status: Finished (2026-10-21).** All nine official lectures read. The course was closed early: the learner already knows Git and delegates most debugging, CI/CD, and Git work to AI agents, so hands-on drills were judged low value. Lessons 0001–0005 stay as reference; no further lessons will be built.
+> **Status: Finished (2026-10-21).** All nine official lectures read. The course was closed early: the learner already knows Git and delegates most debugging, CI/CD, and Git work to AI agents, so hands-on drills were judged low value. The Topic 1–2 lessons were split on 2026-10-26 into ten short spaced-repetition lessons (0001–0010, see [Roadmap](ROADMAP.md)); no further lessons will be built.
 
 ## Start here
 
 - [Mission](MISSION.md)
+- [Roadmap](ROADMAP.md)
 - [Resources](RESOURCES.md)
 - [Teaching notes](NOTES.md)
 - [Lessons](lessons/)
-- [Reference pages](reference/)
+- [Cheat sheet](reference/cheatsheet.html)
 - [Learning records](learning-records/)
 
 ## Course map
@@ -19,8 +20,8 @@ The curriculum follows the official [2026 syllabus](https://missing.csail.mit.ed
 
 | # | Date | Topic | Official source | Status |
 |---:|---|---|---|---|
-| 1 | 12 Jan 2026 | Course Overview + Introduction to the Shell | [Course page](https://missing.csail.mit.edu/2026/course-shell/) | [Lesson 0001](lessons/0001-introduction-to-the-shell.html) |
-| 2 | 13 Jan 2026 | Command-line Environment | [Course page](https://missing.csail.mit.edu/2026/command-line-environment/) | [0002](lessons/0002-environment-variables-and-scripts.html) env vars + scripts · [0003](lessons/0003-signals-and-job-control.html) signals + jobs · [0004](lessons/0004-ssh-and-tmux.html) SSH + tmux · [0005](lessons/0005-dotfiles-and-shell-customization.html) dotfiles + customization |
+| 1 | 12 Jan 2026 | Course Overview + Introduction to the Shell | [Course page](https://missing.csail.mit.edu/2026/course-shell/) | [0001](lessons/0001-commands-and-path.html) commands + PATH · [0002](lessons/0002-streams-pipes-exit-status.html) streams + exit status |
+| 2 | 13 Jan 2026 | Command-line Environment | [Course page](https://missing.csail.mit.edu/2026/command-line-environment/) | [0003](lessons/0003-environment-variables.html) env vars · [0004](lessons/0004-shell-scripts-and-source.html) scripts · [0005](lessons/0005-signals.html) signals · [0006](lessons/0006-job-control.html) jobs · [0007](lessons/0007-ssh.html) SSH · [0008](lessons/0008-tmux.html) tmux · [0009](lessons/0009-bashrc-path-aliases-functions.html) .bashrc · [0010](lessons/0010-dotfiles-repo-and-tools.html) dotfiles repo |
 | 3 | 14 Jan 2026 | Development Environment and Tools | [Course page](https://missing.csail.mit.edu/2026/development-environment/) | Lecture read |
 | 4 | 15 Jan 2026 | Debugging and Profiling | [Course page](https://missing.csail.mit.edu/2026/debugging-profiling/) | Lecture read |
 | 5 | 16 Jan 2026 | Version Control and Git | [Course page](https://missing.csail.mit.edu/2026/version-control/) | Lecture read |
@@ -31,14 +32,9 @@ The curriculum follows the official [2026 syllabus](https://missing.csail.mit.ed
 
 ## Learning loop
 
-Each lesson should fit a 15–20 minute session and include:
+Lessons follow the repo-wide short-lesson model (see `DESIGN.md` at the repo root): one idea, at most 5 minutes of reading, then 2–4 cards that come back in the spaced-repetition review queue. Practice ideas live in the cheat sheet rather than in the lessons.
 
-1. one small mental model;
-2. one practical WSL sandbox task;
-3. retrieval practice with immediate feedback; and
-4. a short connection to .NET/React or Django work.
-
-Lessons are the primary learning units. Reference pages compress durable commands and mental models for later review. Learning records are written only when understanding is demonstrated, a misconception is corrected, or prior knowledge changes the next lesson.
+Lessons are the primary learning units. The cheat sheet compresses durable commands and mental models for later review. Learning records are written only when understanding is demonstrated, a misconception is corrected, or prior knowledge changes the next lesson.
 
 ## Safety boundary
 

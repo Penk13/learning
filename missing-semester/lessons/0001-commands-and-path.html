@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commands, Arguments and PATH</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 1 · The shell</div>
+    <h1>Commands, Arguments and PATH</h1>
+    <p class="dek">A command is a program plus arguments; the shell's job is to split your line and find that program.</p>
+  </header>
+
+  <section>
+    <h2>The model</h2>
+    <blockquote>
+      The shell splits your line into words. The first word names a <strong>program</strong>, the rest are its <strong>arguments</strong>. The shell finds the program, runs it, and the program's output flows to the terminal.
+    </blockquote>
+
+    <div class="flow">
+      <div class="flow-node">you type<br><code>echo hello</code></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">shell splits<br>into words</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">shell finds<br>the program</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">program runs<br>&amp; prints</div>
+    </div>
+
+    <p>The <strong>terminal</strong> is the window. The <strong>shell</strong> (on WSL/Linux usually <code>bash</code>; check with <code>echo $SHELL</code>) is the program inside it that interprets your commands.</p>
+  </section>
+
+  <section>
+    <h2>Reading the prompt</h2>
+    <div class="code-card"><pre>missing:~$ date
+Fri 10 Jan 2020 11:49:31 AM EST
+missing:~$ echo hello
+hello</pre></div>
+    <p><code>missing:~$</code> shows the machine and the <strong>current working directory</strong> (<code>~</code> = home). <code>$</code> means a normal user, not root. Words are split on whitespace, so an argument with spaces must be quoted (<code>"My Photos"</code>) or escaped (<code>My\ Photos</code>).</p>
+  </section>
+
+  <section>
+    <h2>How the shell finds programs</h2>
+    <div class="code-card"><pre>$ echo $PATH
+/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+$ which echo
+/bin/echo</pre></div>
+    <p><code>$PATH</code> is a <code>:</code>-separated list of directories, searched <strong>in order</strong>. The first executable file with the right name wins; <code>which</code> shows which file that is. That is why <code>dotnet</code>, <code>npm</code> and <code>python</code> work from any folder: they live in a <code>$PATH</code> directory.</p>
+  </section>
+
+  <section>
+    <h2>Builtins: why <code>which cd</code> prints nothing</h2>
+    <p>Some commands are not files at all but <strong>builtins</strong>, implemented inside the shell. <code>cd</code> must be one: a separate <code>cd</code> program would run as a child process, change <em>its own</em> directory, exit, and leave your shell where it was. A child can never change its parent's working directory.</p>
+    <div class="code-card"><pre>$ which cd        # nothing: which only searches $PATH files
+$ type cd
+cd is a shell builtin
+$ type ls
+ls is aliased to `ls --color=auto'</pre></div>
+    <p>Use <code>type</code> instead of <code>which</code> when you want the full truth: it reports builtins, aliases, functions and files.</p>
+  </section>
+
+  <section>
+    <h2>Help is local</h2>
+    <ul>
+      <li><code>man date</code>: the manual page (space to page, <code>q</code> to quit).</li>
+      <li><code>date --help</code>: most programs print a short usage summary.</li>
+      <li><code>tldr date</code> (install it): example-first help.</li>
+      <li><code>ls -l</code>: one line per file; the first 10 characters are type and permissions (<code>-rw-r--r--</code> = regular file, owner reads/writes, others read). <code>man ls</code> decodes the rest.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Try it</h2>
+    <ol class="steps">
+      <li><code>echo $PATH</code>, then <code>which python3</code> and <code>type cd</code>.</li>
+      <li><code>ls -l /</code>: which lines are directories (first character <code>d</code>)?</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz data-qid="q1">
+      <p class="quiz-question">How does bash find the program to run for a command like <code>date</code>?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">It searches the directories listed in $PATH, in order, and runs the first matching executable.</button>
+        <button data-answer="wrong">It keeps a fixed list of built-in program names.</button>
+        <button data-answer="wrong">It only looks in the current directory.</button>
+        <button data-answer="wrong">It looks the name up in the user's home directory first, then gives up.</button>
+      </div>
+      <div class="quiz-explanation"><code>$PATH</code> is a <code>:</code>-separated list of directories. The shell tries each in order; <code>which date</code> shows the winner.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t1">
+      <p class="quiz-question">In bash, why does <code>which cd</code> print nothing, and what command shows what <code>cd</code> really is?</p>
+      <div class="quiz-answer"><code>cd</code> is a shell builtin, not a file on <code>$PATH</code>, and <code>which</code> only searches <code>$PATH</code>. It has to be a builtin because a child process cannot change its parent's working directory. <code>type cd</code> reports "cd is a shell builtin".</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t2">
+      <p class="quiz-question">In a shell command line such as <code>cp "My Photos" backup</code>, what are the program and the arguments, and why are the quotes needed?</p>
+      <div class="quiz-answer">The shell splits the line on whitespace: <code>cp</code> is the program, <code>My Photos</code> and <code>backup</code> are its two arguments. Without quotes, <code>My</code> and <code>Photos</code> would become two separate arguments.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

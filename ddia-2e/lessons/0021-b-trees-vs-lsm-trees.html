@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B-Trees vs LSM-Trees</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.4 Storage and Retrieval</p>
+  <h1>B-Trees vs LSM-Trees</h1>
+  <p class="dek">Update in place or append and merge: how the two engines trade read speed, write speed and disk.</p>
+</header>
+
+<section>
+<p class="big-idea">Rule of thumb: <b>LSM-trees for write-heavy</b>, <b>B-trees for read-heavy</b>. But benchmarks are sensitive to workload details: test with <i>your</i> workload. Engines also blend the two.</p>
+
+<div class="table-wrap">
+<table class="compare">
+  <tr><th></th><th>🌳 B-tree (update in place)</th><th>🪵 LSM-tree (log-structured)</th></tr>
+  <tr><td><b>Point reads</b></td><td>One page per level; fast and <b>predictable</b></td><td>May check several SSTables; Bloom filters help</td></tr>
+  <tr><td><b>Range queries</b></td><td>Simple and fast</td><td>Scan all segments in parallel and merge; Bloom filters <b>can't help</b></td></tr>
+  <tr><td><b>Writes</b></td><td>Many small <b>random writes</b> to pages anywhere on disk</td><td>Few big <b>sequential writes</b> (whole segments) → higher throughput</td></tr>
+  <tr><td><b>Write amplification</b></td><td>≥ 2× (WAL + page); whole page rewritten for a few bytes</td><td>Log + flush + each compaction; usually <b>lower</b></td></tr>
+  <tr><td><b>Disk space</b></td><td><b>Fragmentation</b> after deletes; needs vacuum (PostgreSQL)</td><td>Compresses better; stale values linger until compacted</td></tr>
+  <tr><td><b>Gotchas</b></td><td>Snapshots harder (pages overwritten)</td><td>Latency spikes and <b>backpressure</b> when compaction can't keep up; deleted data takes time to really vanish</td></tr>
+  <tr><td><b>Used in</b></td><td>All major relational databases</td><td>RocksDB, Cassandra, ScyllaDB, HBase, Lucene</td></tr>
+</table>
+</div>
+</section>
+
+<section>
+<h2>Write amplification</h2>
+<figure>
+<svg viewBox="0 0 640 170" role="img" aria-label="Write amplification: one application write of a key-value pair becomes several disk writes. In a B-tree: the WAL entry plus the whole page. In an LSM-tree: the log entry, the memtable flush, and again in every compaction.">
+  <rect x="10" y="62" width="110" height="44" rx="8" fill="var(--accent)" opacity=".9"/>
+  <text x="65" y="82" text-anchor="middle" font-size="12" font-weight="700" class="white">1 app write</text>
+  <text x="65" y="98" text-anchor="middle" font-size="10" class="white">100 bytes</text>
+  <path d="M120 75 L170 40 M120 93 L170 128" class="line"/>
+  <text x="180" y="22" font-size="12" font-weight="700" fill="var(--rel)">B-tree</text>
+  <rect x="180" y="30" width="90" height="24" rx="5" fill="var(--rel)" opacity=".8"/><text x="225" y="47" text-anchor="middle" font-size="10" class="white">WAL entry</text>
+  <rect x="280" y="30" width="190" height="24" rx="5" fill="var(--rel)" opacity=".55"/><text x="375" y="47" text-anchor="middle" font-size="10" class="white">whole page rewritten</text>
+  <text x="180" y="110" font-size="12" font-weight="700" fill="var(--sca)">LSM-tree</text>
+  <rect x="180" y="118" width="70" height="24" rx="5" fill="var(--sca)" opacity=".85"/><text x="215" y="135" text-anchor="middle" font-size="10" class="white">log</text>
+  <rect x="258" y="118" width="70" height="24" rx="5" fill="var(--sca)" opacity=".7"/><text x="293" y="135" text-anchor="middle" font-size="10" class="white">flush</text>
+  <rect x="336" y="118" width="80" height="24" rx="5" fill="var(--sca)" opacity=".55"/><text x="376" y="135" text-anchor="middle" font-size="10" class="white">compaction 1</text>
+  <rect x="424" y="118" width="80" height="24" rx="5" fill="var(--sca)" opacity=".4"/><text x="464" y="135" text-anchor="middle" font-size="10" class="white">compaction 2</text>
+  <text x="520" y="135" font-size="12" class="muted-t">…</text>
+</svg>
+<figcaption><b>Write amplification</b> = bytes written to disk ÷ bytes a plain append-only log would write. Higher amplification means fewer writes per second within the same disk bandwidth, and faster SSD wear.</figcaption>
+</figure>
+
+<div class="callout warn"><b>Benchmark long enough.</b> An empty LSM-tree has no compaction work yet, so it looks faster than it will be once compaction kicks in.</div>
+</section>
+
+<section>
+<h2>Why sequential writes win, even on SSDs</h2>
+<p>SSDs have no moving head, yet sequential writes are still faster. Flash is written per page (~4 KiB) but erased only per block (~512 KiB). Random writes leave blocks with a mix of valid and stale pages, so the SSD's garbage collector must copy the valid pages elsewhere before erasing, using write bandwidth and wearing the drive. Sequential writes tend to fill whole blocks with one file, which can later be erased without that copying.</p>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">A sensor platform ingests huge volumes of writes and reads rarely. Which storage engine is the safer first bet?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">LSM-tree with size-tiered compaction</button>
+    <button data-answer="wrong">B-tree with small pages</button>
+    <button data-answer="wrong">An in-memory cache such as Memcached</button>
+    <button data-answer="wrong">A column store with a data cube on top</button>
+  </div>
+  <div class="quiz-explanation">LSM-trees turn writes into big sequential writes with lower write amplification, and size-tiered compaction favours write throughput. Still: benchmark with your real workload.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Define write amplification, and give its sources in a B-tree and in an LSM-tree.</p>
+  <div class="quiz-answer">Bytes actually written to disk divided by the bytes a plain append-only log would write. B-tree: the WAL entry plus rewriting a whole page for a small change. LSM-tree: the log, the memtable flush, and rewriting the data again in each compaction. It limits write throughput and wears out SSDs.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">SSDs have no moving disk head. Why are sequential writes still faster than random writes on them?</p>
+  <div class="quiz-answer">Flash is written per page but erased only per larger block. Random writes leave blocks mixing valid and stale pages, so the SSD's garbage collector must copy valid pages elsewhere before erasing, costing bandwidth and wear. Sequential writes fill whole blocks that can later be erased without that copying.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">Why are range queries a weaker spot for LSM-trees than for B-trees?</p>
+  <div class="quiz-answer">A B-tree walks one sorted tree, using sibling pointers along the leaves. An LSM-tree must scan the range in every segment (and the memtable) in parallel and merge the results, and Bloom filters can't help because they only answer "is this exact key present?".</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

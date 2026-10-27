@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SSH: Remote Shells and Keys</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Command-line environment</div>
+    <h1>SSH: Remote Shells and Keys</h1>
+    <p class="dek">SSH is an encrypted pipe to a shell on another machine, opened with a key pair instead of a password.</p>
+  </header>
+
+  <section>
+    <h2>The model</h2>
+    <blockquote>
+      SSH carries stdin, stdout and stderr through an encrypted connection, so remote commands compose with local ones. You prove who you are with a <strong>key pair</strong>: the private key stays with you, the public key goes on the server.
+    </blockquote>
+  </section>
+
+  <section>
+    <h2>Where does each part run?</h2>
+    <div class="code-card"><pre>$ ssh alice@server.example.com          # interactive shell as alice
+$ ssh alice@server ls | wc -l           # ls REMOTE, wc LOCAL
+$ ssh alice@server 'ls | wc -l'         # both remote (one quoted string)</pre></div>
+    <p>Your local shell interprets everything unquoted first, including <code>|</code>, <code>&gt;</code> and <code>$VAR</code>. Quoting decides what is sent to the server.</p>
+  </section>
+
+  <section>
+    <h2>Keys instead of passwords</h2>
+    <div class="code-card"><pre>$ ssh-keygen -a 100 -t ed25519 -f ~/.ssh/id_ed25519
+#   ~/.ssh/id_ed25519      ← PRIVATE: never share, never commit
+#   ~/.ssh/id_ed25519.pub  ← PUBLIC: safe to give to servers / GitHub
+$ ssh-copy-id -i ~/.ssh/id_ed25519 alice@server   # appends .pub to ~/.ssh/authorized_keys</pre></div>
+    <p>The server checks that you hold the private key without the key ever crossing the network. Protect the private key with a passphrase; <code>ssh-agent</code> remembers it so you don't retype it. Use one key per machine, so you can revoke one without the others. If a private key leaks, remove its public key everywhere and generate a new pair. GitHub SSH remotes (<code>git@github.com:…</code>) use these same keys.</p>
+  </section>
+
+  <section>
+    <h2><code>~/.ssh/config</code>: name your hosts</h2>
+    <div class="code-card"><pre>Host vm
+    User alice
+    HostName 172.16.174.141
+    Port 2222
+    IdentityFile ~/.ssh/id_ed25519
+    LocalForward 9999 localhost:8888</pre></div>
+    <p>Now <code>ssh vm</code> is enough. <code>scp</code>, <code>rsync</code> and <code>git</code> read the same file, so the short name works everywhere.</p>
+  </section>
+
+  <section>
+    <h2>Copying files</h2>
+    <div class="code-card"><pre>$ scp ./app.zip vm:/tmp/app.zip              # simple copy
+$ rsync -av --partial ./dist/ vm:/srv/app/   # sends only changes; resumable</pre></div>
+    <p>Prefer <code>rsync</code> for anything bigger than one file. Trailing slash matters: <code>dist/</code> copies the folder's <em>contents</em>, <code>dist</code> copies the folder itself.</p>
+  </section>
+
+  <section>
+    <h2>Port forwarding</h2>
+    <div class="code-card"><pre>$ ssh -L 9999:localhost:8888 vm    # -L local_port:target_host:target_port</pre></div>
+    <p>Traffic to <code>localhost:9999</code> on your laptop travels through the tunnel and comes out on the server as <code>localhost:8888</code>. The target address is resolved <em>on the server</em>. This is how you reach a web UI or database that only listens inside the server, without exposing anything publicly. (<code>LocalForward</code> in the config does the same.)</p>
+    <p>For bad connections, <strong>Mosh</strong> is an SSH alternative that survives network changes and laptop sleep. For work servers, follow your organisation's access process; practise only on your own VM.</p>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz data-qid="t1">
+      <p class="quiz-question">In <code>ssh vm ls | wc -l</code>, where do <code>ls</code> and <code>wc</code> run, and how do you make both run on <code>vm</code>?</p>
+      <div class="quiz-answer"><code>ls</code> runs on <code>vm</code>, <code>wc</code> runs locally: your local shell splits on the unquoted <code>|</code>, so only <code>ls</code> is sent. Quote the whole command: <code>ssh vm 'ls | wc -l'</code>.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="q1">
+      <p class="quiz-question">Which file is safe to paste into GitHub's "SSH keys" settings?</p>
+      <div class="quiz-options">
+        <button data-answer="correct"><code>~/.ssh/id_ed25519.pub</code></button>
+        <button data-answer="wrong"><code>~/.ssh/id_ed25519</code></button>
+        <button data-answer="wrong"><code>~/.ssh/config</code></button>
+        <button data-answer="wrong">Either key file; they are equivalent.</button>
+      </div>
+      <div class="quiz-explanation">Only the public <code>.pub</code> key leaves your machine. The private key works like a password; if it leaks, remove its public key from every server and account and generate a new pair.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t2">
+      <p class="quiz-case">A PostgreSQL server on host <code>vm</code> listens only on <code>vm</code>'s own port 5432. You run <code>ssh -L 5433:localhost:5432 vm</code>.</p>
+      <p class="quiz-question">What can you now do from your laptop, and does this expose the database publicly?</p>
+      <div class="quiz-answer">Point a local client at <code>localhost:5433</code>; traffic goes through the SSH tunnel and reaches port 5432 on <code>vm</code> (<code>localhost</code> is resolved on the server). Nothing new is exposed publicly; only you, through SSH, reach it.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

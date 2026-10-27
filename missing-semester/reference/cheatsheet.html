@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shell Cheat Sheet</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">Reference · The Missing Semester</div>
+    <h1>Shell Cheat Sheet</h1>
+    <p class="dek">Topics 1–2 compressed: commands, streams, environment, scripts, signals, jobs, SSH, tmux, dotfiles.</p>
+  </header>
+
+  <section>
+    <h2>Two models</h2>
+    <ul>
+      <li><strong>Command = program + arguments.</strong> The shell splits the line, finds the program on <code>$PATH</code>, runs it; stdout flows to the terminal or through a pipe.</li>
+      <li><strong>Children get a copy, changes never flow back.</strong> A child gets args + exported env + working directory and returns only an exit status. Hence: <code>cd</code> is a builtin, <code>.bashrc</code>/<code>activate</code> must be sourced, CI fails on non-zero exit.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Finding programs and help</h2>
+    <div class="code-card"><pre>echo $PATH            # ':'-separated dirs, searched in order
+which date            # which file runs for 'date' ($PATH only)
+type cd ls mkcd       # builtin / alias / function / file
+man date; date --help; tldr date
+pwd; cd ~ / .. -      # home / parent / previous dir
+ls -la                # -l: type + permissions; -a: show dotfiles</pre></div>
+  </section>
+
+  <section>
+    <h2>Streams, pipes, exit status</h2>
+    <div class="code-card"><pre>cmd &gt; f   cmd &gt;&gt; f     # stdout → file (overwrite / append)
+cmd &lt; f               # stdin ← file
+cmd 2&gt; err.txt        # stderr → file
+cmd &gt; all.txt 2&gt;&amp;1    # both → same file
+cmd 2&gt; /dev/null      # discard errors
+a | b                 # stdout of a → stdin of b
+cmd | tee log.txt     # show AND save
+echo $?               # 0 = success
+a &amp;&amp; b   a || b   a ; b   # on success / on failure / always</pre></div>
+  </section>
+
+  <section>
+    <h2>Quoting, globs, substitution</h2>
+    <div class="code-card"><pre>'$PATH'  "$PATH"  My\ Photos   # literal / expands / escape one char
+*.txt  file?.txt  {a,b,c}.txt  # shell expands before the program runs
+today=$(date +%F)              # command substitution
+"$var"                         # always quote expansions</pre></div>
+  </section>
+
+  <section>
+    <h2>Environment variables</h2>
+    <div class="code-card"><pre>foo=bar               # shell variable (this shell only)
+export FOO=bar        # environment variable (copied to children)
+FOO=bar cmd           # one-shot: only this child gets it
+unset FOO; printenv   # remove / list exported vars
+ASPNETCORE_ENVIRONMENT=Staging dotnet run
+DJANGO_SETTINGS_MODULE=config.settings.test python manage.py test</pre></div>
+  </section>
+
+  <section>
+    <h2>Scripts</h2>
+    <div class="code-card"><pre>#!/usr/bin/env bash
+set -euo pipefail     # stop on error / unset var / failed pipe part
+"$0" "$1" "$@" "$#"   # name / first arg / all args / count
+${1:-dev}             # $1, or "dev" if missing
+exit 1                # status handed back
+chmod +x s.sh; ./s.sh # run in a child (cd/export lost)
+source s.sh  # or . s.sh: run in THIS shell (cd/export kept)
+for i in $(seq 1 3); do echo "$i"; done
+if [ -f "$1" ]; then echo exists; fi</pre></div>
+    <p class="caption">Lint with <code>shellcheck</code>. Past ~100 lines, prefer Python.</p>
+  </section>
+
+  <section>
+    <h2>Signals</h2>
+    <table>
+      <tr><td><code>SIGINT</code></td><td>Ctrl-C · catchable</td></tr>
+      <tr><td><code>SIGQUIT</code></td><td>Ctrl-\ · rarely caught</td></tr>
+      <tr><td><code>SIGTERM</code></td><td><code>kill PID</code> · polite, allows cleanup</td></tr>
+      <tr><td><code>SIGKILL</code></td><td><code>kill -9 PID</code> · uncatchable, last resort</td></tr>
+      <tr><td><code>SIGTSTP</code></td><td>Ctrl-Z · pause</td></tr>
+      <tr><td><code>SIGHUP</code></td><td>terminal closed · default: die</td></tr>
+    </table>
+    <div class="code-card"><pre>pgrep -lf name; pkill -f "pattern"; kill -l
+docker stop           # SIGTERM → 10 s grace → SIGKILL
+exec dotnet App.dll   # last line of an entrypoint script: app gets signals</pre></div>
+  </section>
+
+  <section>
+    <h2>Jobs and cleanup</h2>
+    <div class="code-card"><pre>cmd &amp;                 # background;  $! = its PID
+Ctrl-Z; bg            # forgot &amp;: suspend, resume in background
+jobs; fg %1; kill %2  # list / foreground / signal by job number
+nohup cmd &amp;           # ignore SIGHUP (output → nohup.out)
+disown                # running job: shell won't send SIGHUP
+wait; wait $!         # wait for own children
+kill -0 PID           # exists? (sends nothing)
+trap cleanup EXIT     # runs on any exit except SIGKILL</pre></div>
+  </section>
+
+  <section>
+    <h2>SSH</h2>
+    <div class="code-card"><pre>ssh vm ls | wc -l              # ls remote, wc local
+ssh vm 'ls | wc -l'            # both remote
+ssh-keygen -a 100 -t ed25519   # id_ed25519 = PRIVATE, .pub = public
+ssh-copy-id -i ~/.ssh/id_ed25519 vm
+ssh -L 9999:localhost:8888 vm  # laptop :9999 → vm's localhost:8888
+scp f vm:/tmp/
+rsync -av --partial dist/ vm:/srv/app/   # dist/ = contents, dist = folder
+
+# ~/.ssh/config
+Host vm
+    User alice
+    HostName 172.16.174.141
+    IdentityFile ~/.ssh/id_ed25519</pre></div>
+  </section>
+
+  <section>
+    <h2>tmux (prefix <code>Ctrl-b</code>)</h2>
+    <div class="code-card"><pre>tmux new -s NAME; tmux ls; tmux a [-t NAME]; tmux kill-session -t NAME
+&lt;C-b&gt; d               # detach (keeps running)
+&lt;C-b&gt; c / n / p / 0-9 / , / w   # window: new / next / prev / jump / rename / list
+&lt;C-b&gt; " / %           # split top-bottom / left-right
+&lt;C-b&gt; arrow / z / [   # move pane / zoom / scrollback (q leaves)</pre></div>
+    <p class="caption">Session → window → pane. The shell's parent is the tmux server, so SSH drops don't send it SIGHUP.</p>
+  </section>
+
+  <section>
+    <h2>Dotfiles</h2>
+    <div class="code-card"><pre>export PATH="$PATH:$HOME/.dotnet/tools"   # append, never replace
+alias gs="git status"; \ls; unalias gs     # define / bypass / remove
+mkcd() { mkdir -p "$1" &amp;&amp; cd "$1"; }      # function: args + runs in this shell
+source ~/.bashrc                           # apply edits to an open shell
+[ -f ~/.bashrc.local ] &amp;&amp; source ~/.bashrc.local   # secrets, uncommitted
+ln -sf ~/dotfiles/bashrc ~/.bashrc         # dotfiles repo + symlinks
+Ctrl-R                                     # search history
+curl -fsSL URL -o install.sh; less install.sh; bash install.sh   # not curl | bash</pre></div>
+  </section>
+
+  <section>
+    <h2>Everyday text tools</h2>
+    <table>
+      <tr><td><code>sort</code> · <code>uniq -c</code></td><td>sort lines · count consecutive duplicates</td></tr>
+      <tr><td><code>head</code> · <code>tail</code></td><td>first · last lines</td></tr>
+      <tr><td><code>grep pattern file</code></td><td>matching lines (regex)</td></tr>
+      <tr><td><code>sed -i 's/a/b/g' file</code></td><td>replace in place</td></tr>
+      <tr><td><code>find . -name "*.py"</code></td><td>find files</td></tr>
+      <tr><td><code>awk '{print $2}' file</code></td><td>print a column</td></tr>
+    </table>
+    <p class="caption">5 most common extensions: <code>find ~ -type f | sed 's/.*\.//' | sort | uniq -c | sort -rn | head -5</code></p>
+  </section>
+
+  <section>
+    <h2>Practice ideas (optional)</h2>
+    <ul>
+      <li>Write <code>run-app.sh</code> that takes an environment name (<code>${1:-Development}</code>), refuses <code>Production</code> with a message on stderr and <code>exit 1</code>; test with <code>&amp;&amp;</code> and <code>2&gt; /dev/null</code>.</li>
+      <li>Save a Python script that catches SIGINT; try Ctrl-C, then Ctrl-\, then <code>echo $?</code>.</li>
+      <li>Official exercises: <code>pidwait PID</code> (loop on <code>kill -0</code>), <code>marco</code>/<code>polo</code> as functions, top-10 commands with <code>history | awk '{$1="";print substr($0,2)}' | sort | uniq -c | sort -n | tail -n 10</code>.</li>
+      <li>Own VM only: <code>LocalForward 9999 localhost:8888</code>, run <code>python3 -m http.server 8888</code> on the VM, open <code>http://localhost:9999</code>.</li>
+    </ul>
+  </section>
+
+  <section class="primary-source">
+    <h2>Primary sources</h2>
+    <ul>
+      <li><a href="https://missing.csail.mit.edu/2026/course-shell/">MIT Missing Semester 2026 — Topic 1</a> and <a href="https://missing.csail.mit.edu/2026/command-line-environment/">Topic 2</a></li>
+      <li><a href="https://www.gnu.org/software/bash/manual/bash.html">GNU Bash manual</a> — Quoting, Redirections, Pipelines, The Set Builtin, Special Parameters</li>
+    </ul>
+  </section>
+
+</div>
+</body>
+</html>

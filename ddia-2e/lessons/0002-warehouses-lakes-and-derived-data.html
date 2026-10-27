@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warehouses, Lakes and Derived Data</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.1 Trade-Offs in Data Systems Architecture</p>
+  <h1>Warehouses, Lakes and Derived Data</h1>
+  <p class="dek">How operational data flows into analytics, and which copy is the truth when they disagree.</p>
+</header>
+
+<section>
+<h2>Pipelines into analytics</h2>
+<figure>
+<svg viewBox="0 0 640 250" role="img" aria-label="Several operational databases and SaaS APIs feed an extract-transform-load process into a data warehouse for analysts, and raw files into a data lake for data scientists; reverse ETL sends results back to operational systems">
+  <g>
+    <rect x="0" y="20" width="120" height="38" rx="8" class="box"/><text x="60" y="44" text-anchor="middle" font-size="12">🗄 OLTP DB A</text>
+    <rect x="0" y="68" width="120" height="38" rx="8" class="box"/><text x="60" y="92" text-anchor="middle" font-size="12">🗄 OLTP DB B</text>
+    <rect x="0" y="116" width="120" height="38" rx="8" class="box"/><text x="60" y="140" text-anchor="middle" font-size="12">☁ SaaS API</text>
+  </g>
+  <path d="M120 39 L190 80 M120 87 H190 M120 135 L190 95" class="line"/>
+  <rect x="192" y="58" width="130" height="58" rx="10" fill="var(--accent)"/>
+  <text x="257" y="82" text-anchor="middle" font-size="13" font-weight="700" class="white">Extract → Transform</text>
+  <text x="257" y="100" text-anchor="middle" font-size="13" font-weight="700" class="white">→ Load (ETL)</text>
+  <path d="M322 75 L410 45" class="line" marker-end="url(#ar4)"/>
+  <path d="M322 100 L410 140" class="line" marker-end="url(#ar4)"/>
+  <rect x="412" y="20" width="140" height="50" rx="10" fill="var(--sca)" opacity=".85"/>
+  <text x="482" y="42" text-anchor="middle" font-size="13" font-weight="700" class="white">🏛 Data warehouse</text>
+  <text x="482" y="59" text-anchor="middle" font-size="10" class="white">relational, SQL, cleaned</text>
+  <rect x="412" y="115" width="140" height="50" rx="10" fill="var(--mai)" opacity=".85"/>
+  <text x="482" y="137" text-anchor="middle" font-size="13" font-weight="700" class="white">🌊 Data lake</text>
+  <text x="482" y="154" text-anchor="middle" font-size="10" class="white">raw files, any format</text>
+  <text x="600" y="49" text-anchor="middle" font-size="18">📊</text><text x="600" y="66" text-anchor="middle" font-size="10" class="muted-t">analysts</text>
+  <text x="600" y="144" text-anchor="middle" font-size="18">🧪</text><text x="600" y="161" text-anchor="middle" font-size="10" class="muted-t">data scientists</text>
+  <path d="M482 165 C482 235, 60 235, 60 160" stroke="var(--rel)" stroke-width="1.8" stroke-dasharray="5 4" fill="none" marker-end="url(#ar5)"/>
+  <text x="270" y="228" text-anchor="middle" font-size="11" fill="var(--rel)">reverse ETL: results back into production</text>
+  <defs>
+    <marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker>
+    <marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--rel)"/></marker>
+  </defs>
+</svg>
+<figcaption>Usually <b>many</b> operational databases, <b>one</b> warehouse, so analysts can join across them. SaaS data arrives through vendor APIs via connector services (Fivetran, Airbyte).</figcaption>
+</figure>
+
+<ul>
+  <li><b>ETL</b> (extract–transform–load) moves data into the warehouse, as periodic dumps or a continuous stream. <b>ELT</b> transforms after loading. Generalized, these are <b>data pipelines</b>.</li>
+  <li><b>Data lake</b>: just files, no imposed format or schema (Parquet, text, images, feature vectors). Cheaper (object storage) and suits data scientists working in Pandas, scikit-learn or Spark rather than SQL. <b>Sushi principle</b>: "raw data is better", so each consumer transforms it their own way.</li>
+  <li><b>HTAP</b> (hybrid transactional/analytical processing) puts OLTP and analytics in one system, often two engines behind one interface. Useful when one app needs both (e.g. fraud detection), but it <b>doesn't replace</b> the warehouse.</li>
+  <li><b>Streams</b> let analytics react in seconds (block fraud now). <b>Reverse ETL</b> pushes analytic outputs, such as an ML model, back into operational systems.</li>
+</ul>
+<p>Trend: the larger the scale, the more specialized the systems. General-purpose works fine for small data.</p>
+</section>
+
+<section>
+<h2>Systems of record vs derived data</h2>
+<figure>
+<svg viewBox="0 0 640 200" role="img" aria-label="A system of record feeds derived data systems: cache, search index, materialized view, warehouse copy and ML model. Derived data can be rebuilt from the source.">
+  <rect x="10" y="60" width="170" height="80" rx="12" fill="var(--rel)"/>
+  <text x="95" y="90" text-anchor="middle" font-size="14" font-weight="700" class="white">System of record</text>
+  <text x="95" y="108" text-anchor="middle" font-size="11" class="white">source of truth · written first</text>
+  <text x="95" y="124" text-anchor="middle" font-size="11" class="white">each fact once (normalized)</text>
+  <g>
+    <path d="M180 100 L300 30" class="line" marker-end="url(#ar6)"/>
+    <path d="M180 100 L300 70" class="line" marker-end="url(#ar6)"/>
+    <path d="M180 100 L300 110" class="line" marker-end="url(#ar6)"/>
+    <path d="M180 100 L300 150" class="line" marker-end="url(#ar6)"/>
+    <path d="M180 100 L300 185" class="line" marker-end="url(#ar6)"/>
+  </g>
+  <g font-size="12">
+    <rect x="302" y="16" width="170" height="28" rx="6" class="box"/><text x="387" y="35" text-anchor="middle">⚡ cache</text>
+    <rect x="302" y="56" width="170" height="28" rx="6" class="box"/><text x="387" y="75" text-anchor="middle">🔎 search index</text>
+    <rect x="302" y="96" width="170" height="28" rx="6" class="box"/><text x="387" y="115" text-anchor="middle">🪞 materialized view</text>
+    <rect x="302" y="136" width="170" height="28" rx="6" class="box"/><text x="387" y="155" text-anchor="middle">🏛 warehouse copy</text>
+    <rect x="302" y="171" width="170" height="28" rx="6" class="box"/><text x="387" y="190" text-anchor="middle">🤖 trained ML model</text>
+  </g>
+  <text x="560" y="80" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sca)">Derived data</text>
+  <text x="560" y="100" text-anchor="middle" font-size="11" class="muted-t">redundant copy,</text>
+  <text x="560" y="115" text-anchor="middle" font-size="11" class="muted-t">fast reads,</text>
+  <text x="560" y="130" text-anchor="middle" font-size="11" class="muted-t">lose it → rebuild it</text>
+  <defs><marker id="ar6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>
+</svg>
+<figcaption>If a derived system disagrees with the system of record, the system of record is right, by definition. Analytical systems are almost always derived.</figcaption>
+</figure>
+
+<div class="callout tip"><b>It's about use, not the tool.</b> The same PostgreSQL can be the system of record in one app and a derived cache in another. Labelling "what's derived from what" clears up a confusing architecture and raises the real question: <i>what process updates the derived data when the source changes?</i></div>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">The search index says a course has 30 seats left; the main database, which every enrollment is written to first, says 28. Which is correct?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">The database: it is the system of record</button>
+    <button data-answer="wrong">The search index, because it is newer</button>
+    <button data-answer="wrong">Whichever was updated most recently</button>
+    <button data-answer="wrong">Neither; both must be rebuilt now</button>
+  </div>
+  <div class="quiz-explanation">When derived data disagrees with the system of record, the system of record is right by definition. Rebuild the index from it.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">What is the key difference between a data lake and a data warehouse, and who typically uses each?</p>
+  <div class="quiz-answer">A warehouse is a relational database with a cleaned, imposed schema, queried in SQL by analysts. A lake is just files in any format with no imposed schema (Parquet, text, images), cheaper on object storage, used by data scientists with tools like Pandas or Spark ("sushi principle": raw data is better).</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">Define system of record and derived data, and name three examples of derived data.</p>
+  <div class="quiz-answer">System of record: the authoritative source of truth, written first, each fact stored once. Derived data: produced by transforming other data; redundant, and can be rebuilt from the source if lost. Examples: cache, search index, materialized view, warehouse copy, trained ML model.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">What are HTAP and reverse ETL, and does HTAP remove the need for a data warehouse?</p>
+  <div class="quiz-answer">HTAP runs transactional and analytical workloads in one system (often two engines behind one interface), useful when one app needs both, like fraud detection. Reverse ETL pushes analytical outputs (e.g. an ML model's results) back into operational systems. HTAP does not replace the warehouse, which still integrates data from many sources.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

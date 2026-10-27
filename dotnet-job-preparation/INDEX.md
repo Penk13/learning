@@ -4,7 +4,7 @@ A short, practice-led course for turning existing team-based C#/.NET experience 
 
 ## Mission
 
-See [[MISSION]].
+See [[MISSION]]. Planned lessons: [[ROADMAP]].
 
 ## Lessons
 
@@ -12,7 +12,7 @@ See [[MISSION]].
 
 ## Reference
 
-- [ASP.NET Core request pipeline field reference](reference/aspnet-core-request-pipeline.html)
+- [Cheat sheet](reference/cheatsheet.html)
 
 ## Sources
 
@@ -24,4 +24,4 @@ See [[RESOURCES]] for the curated knowledge and community sources.
 
 ## Suggested rhythm
 
-Complete one lesson in 15–20 minutes, then reply with the retrieval answers and interview drill response. The next lesson will be chosen from demonstrated understanding, not simply from the calendar.
+Each lesson is a 5-minute read followed by review cards; cards come back on the spaced-repetition review page. The next lesson is chosen from demonstrated understanding, not simply from the calendar.

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multidimensional, Full-Text and Vector Indexes</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.4 Storage and Retrieval</p>
+  <h1>Multidimensional, Full-Text and Vector Indexes</h1>
+  <p class="dek">Searching by location, by words, and by meaning each needs a different kind of index.</p>
+</header>
+
+<section>
+<h2>Concatenated vs multidimensional</h2>
+<p>A <b>concatenated index</b> joins fields into one key, like a phone book sorted by (last name, first name). It finds a last name, or last + first, but is <b>useless for first name alone</b>. A map query ("restaurants inside this rectangle") needs latitude <i>and</i> longitude ranges at once, which a concatenated index can't do. <b>Spatial indexes</b> such as <b>R-trees</b> group nearby points in the same subtree (PostGIS). The same applies beyond maps: (date, temperature) to find days of 25–30 °C in one year.</p>
+</section>
+
+<section>
+<h2>Full-text search: the inverted index</h2>
+<figure>
+<svg viewBox="0 0 640 180" role="img" aria-label="An inverted index maps each term to its postings list of document IDs. Searching red apples intersects the postings for red and apples, which can be done as a bitwise AND of bitmaps.">
+  <g font-size="11">
+    <text x="20" y="18" font-weight="700">Documents</text>
+    <rect x="10" y="26" width="170" height="26" rx="5" class="box2"/><text x="18" y="43">1: "red apples on sale"</text>
+    <rect x="10" y="58" width="170" height="26" rx="5" class="box2"/><text x="18" y="75">2: "green apples"</text>
+    <rect x="10" y="90" width="170" height="26" rx="5" class="box2"/><text x="18" y="107">3: "red shoes"</text>
+    <rect x="10" y="122" width="170" height="26" rx="5" class="box2"/><text x="18" y="139">4: "red apples, fresh"</text>
+  </g>
+  <path d="M190 85 H240" class="line"/>
+  <text x="250" y="18" font-size="12" font-weight="700">term → postings list (as a bitmap)</text>
+  <g font-size="11" font-family="var(--mono)">
+    <text x="250" y="43">apples → 1, 2, 4</text><text x="440" y="43">1 1 0 1</text>
+    <text x="250" y="68">green  → 2</text><text x="440" y="68">0 1 0 0</text>
+    <text x="250" y="93">red    → 1, 3, 4</text><text x="440" y="93">1 0 1 1</text>
+    <text x="250" y="118">shoes  → 3</text><text x="440" y="118">0 0 1 0</text>
+  </g>
+  <rect x="250" y="134" width="370" height="30" rx="6" fill="var(--accent)" opacity=".9"/>
+  <text x="435" y="154" text-anchor="middle" font-size="12" class="white" font-weight="700">"red apples" = red AND apples → docs 1, 4</text>
+</svg>
+<figcaption>Same bitmap trick as in column stores. <b>Lucene</b> (inside Elasticsearch and Solr) keeps term → postings in SSTable-like files merged LSM-style; PostgreSQL's <b>GIN</b> index does the same for full text and JSON.</figcaption>
+</figure>
+<ul>
+  <li><b>n-grams</b>: index every substring of length n ("hello" → hel, ell, llo). Allows substring and even regex search; the index gets big.</li>
+  <li><b>Typos</b>: Lucene finds words within an <b>edit distance</b> (1 = one letter added, removed or replaced) using a <b>Levenshtein automaton</b>.</li>
+</ul>
+</section>
+
+<section>
+<h2>Vector embeddings: search by meaning</h2>
+<p><b>Semantic search</b> finds "canceling your subscription" when the user types "how to close my account". An <b>embedding model</b> turns each document into a <b>vector embedding</b>: an array of floats (often 1,000+) marking a point in space, where similar meanings land close together. Closeness is measured with <b>cosine similarity</b> (angle) or <b>Euclidean distance</b>. It's a core part of <b>retrieval-augmented generation (RAG)</b>. R-trees don't work for 1,000+ dimensions, so vector indexes are special:</p>
+<div class="grid">
+  <div class="card"><h4>Flat</h4><p>Compare the query with every vector. Exact, slow.</p></div>
+  <div class="card"><h4>IVF</h4><p>Cluster vectors into partitions; search only the nearest ones ("probes"). More probes: more accurate, slower. Approximate.</p></div>
+  <div class="card"><h4>HNSW</h4><p>Layered proximity graphs, sparse at the top, dense at the bottom; walk down greedily toward the nearest vector. Approximate.</p></div>
+</div>
+<p>Faiss and PostgreSQL's <b>pgvector</b> support both IVF and HNSW. Note the two meanings of "vector": in <i>vectorized processing</i> it's a batch of values for tight CPU loops; in <i>embeddings</i> it's a point in space.</p>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">An index exists on (last_name, first_name). Which query can it NOT serve efficiently?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">Everyone with first name Ana</button>
+    <button data-answer="wrong">Everyone with last name Wijaya</button>
+    <button data-answer="wrong">Last name Wijaya and first name Ana</button>
+    <button data-answer="wrong">Last names from Wa to Wz, sorted</button>
+  </div>
+  <div class="quiz-explanation">A concatenated index is sorted by the first field, then the second. Like a phone book, it can't find everyone with a given first name without scanning.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">How does an inverted index answer a search for "red apples"?</p>
+  <div class="quiz-answer">It maps each term to a postings list of the documents containing it. The search intersects the postings lists for "red" and "apples", which with bitmaps is a bitwise AND; the documents left contain both words.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-case">A help-desk search should find the article "reset my password" when users type "can't log in". The words don't overlap.</p>
+  <p class="quiz-question">What kind of index fits, and how does it work?</p>
+  <div class="quiz-answer">A vector index over text embeddings (semantic search). An embedding model turns each text into a vector of floats where similar meanings are close; the index (flat, IVF or HNSW, e.g. pgvector) finds the vectors nearest the query's by cosine or Euclidean distance. Full-text and n-gram indexes only match words.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">Compare flat, IVF and HNSW vector indexes.</p>
+  <div class="quiz-answer">Flat compares the query with every vector: exact but slow. IVF clusters vectors into partitions and searches only the nearest few (probes): approximate, more probes = more accurate but slower. HNSW walks layered proximity graphs from a sparse top layer down to a dense bottom layer: approximate.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

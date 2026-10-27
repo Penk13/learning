@@ -1,10 +1,4 @@
-/* DDIA course — reusable interactive components.
- *
- * Quiz:     <div class="quiz" data-answer="2"> <div class="q">…</div>
- *             <div class="opts"><button class="opt">…</button>…</div>
- *             <div class="why">explanation</div></div>
- *           data-answer = 0-based index of correct option.
- *           Optional <span class="score" data-quiz-score></span> shows running score.
+/* DDIA course — interactive diagrams. Questions use the shared card script in /assets.
  *
  * Widgets:  <div class="widget" data-widget="percentiles"></div>
  *           <div class="widget" data-widget="tail-amplification"></div>
@@ -35,50 +29,6 @@
     for (const k in attrs) el.setAttribute(k, attrs[k]);
     return el;
   };
-
-  /* ---------------- Quiz ---------------- */
-  function initQuizzes() {
-    const quizzes = [...document.querySelectorAll(".quiz")];
-    const scoreEl = $("[data-quiz-score]");
-    let answered = 0, correct = 0;
-    const updateScore = () => {
-      if (scoreEl) scoreEl.textContent = `${correct} / ${quizzes.length} correct` +
-        (answered < quizzes.length ? ` · ${quizzes.length - answered} left` : " · done");
-    };
-    quizzes.forEach((quiz, qi) => {
-      const answer = Number(quiz.dataset.answer);
-      const opts = [...quiz.querySelectorAll("button.opt")];
-      opts.forEach((btn, i) => btn.addEventListener("click", () => {
-        if (quiz.classList.contains("done")) return;
-        quiz.classList.add("done");
-        answered++;
-        if (i === answer) correct++;
-        btn.classList.add(i === answer ? "right" : "wrong");
-        opts[answer].classList.add("right");
-        opts.forEach((b) => (b.disabled = true));
-        updateScore();
-        // Picked up by assets/progress.js for answer sync.
-        quiz.dispatchEvent(new CustomEvent("quiz:answered", {
-          bubbles: true,
-          detail: {
-            qid: quiz.dataset.qid || `q${qi + 1}`,
-            question: quiz.querySelector(".q")?.textContent || "",
-            answer: btn.textContent,
-            correct: i === answer,
-          },
-        }));
-      }));
-    });
-    const reset = $("[data-quiz-reset]");
-    if (reset) reset.addEventListener("click", () => {
-      quizzes.forEach((q) => {
-        q.classList.remove("done");
-        q.querySelectorAll("button.opt").forEach((b) => { b.disabled = false; b.classList.remove("right", "wrong"); });
-      });
-      answered = 0; correct = 0; updateScore();
-    });
-    updateScore();
-  }
 
   /* ---------------- Percentiles ----------------
    * 100 simulated response times. Shows mean vs p50/p95/p99.
@@ -656,7 +606,6 @@
                     "n-plus-one": nPlusOne, "event-sourcing": eventSourcing, lsm, bloom };
 
   document.addEventListener("DOMContentLoaded", () => {
-    initQuizzes();
     document.querySelectorAll("[data-widget]").forEach((el) => {
       const fn = WIDGETS[el.dataset.widget];
       if (fn) fn(el);

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maintainability</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.2 Defining Nonfunctional Requirements</p>
+  <h1>Maintainability</h1>
+  <p class="dek">Most of software's cost comes after launch. Be kind to the people who run it and change it next.</p>
+</header>
+
+<section>
+<p>Software doesn't wear out, but requirements change, platforms change and bugs need fixing. Every valuable system eventually becomes a <b>legacy system</b>: outdated technology, knowledge that left with former staff. Maintenance is as much a people problem as a technical one. Maintainability has three parts:</p>
+
+<div class="grid">
+  <div class="card mai"><h4>⚙ Operability</h4>
+    <p>Easy for the organization to keep the system running.</p>
+    <p>"Good operations can often work around bad software, but good software cannot run reliably with bad operations."</p>
+    <p><b>Automation is two-edged:</b> the cases it can't handle are the hardest ones, so more automation needs a <i>more</i> skilled ops team, and a misbehaving automated system is harder to debug.</p>
+    <p>Data systems help with: monitoring and observability, no dependency on single machines, documentation and a clear "if I do X, Y happens" model, good defaults with overrides, self-healing with manual control, predictable behaviour.</p></div>
+  <div class="card mai"><h4>🧩 Simplicity</h4>
+    <p>Easy for new engineers to understand.</p>
+    <p>Complexity slows everyone down and hides bugs: a <b>big ball of mud</b>.</p>
+    <p><b>Essential vs accidental complexity</b> (Brooks, "No Silver Bullet"): inherent in the problem vs caused by our tools. Useful, but the line moves as tooling improves.</p>
+    <p><b>Best tool: abstraction.</b> SQL hides on-disk structures, concurrency and crash recovery. The book is about general-purpose abstractions (transactions, indexes, event logs) you build on.</p></div>
+  <div class="card mai"><h4>🌱 Evolvability</h4>
+    <p>Easy to change for new requirements.</p>
+    <p>Agile, TDD and refactoring help inside one codebase; evolvability is that agility at the <b>whole-data-system</b> level. Loosely coupled, simple systems are easier to change.</p>
+    <p><b>Irreversibility</b> is the big enemy: a migration you can't roll back is far riskier than one you can. <b>Minimize irreversible steps.</b></p></div>
+</div>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">You plan a database migration. Which choice most improves evolvability?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">Keeping a way to switch back</button>
+    <button data-answer="wrong">Doing it all in one big weekend</button>
+    <button data-answer="wrong">Adding more automation scripts</button>
+    <button data-answer="wrong">Choosing the newest database</button>
+  </div>
+  <div class="quiz-explanation">Irreversibility is a major obstacle to change. If you can roll back, the stakes are much lower.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Name the three parts of maintainability in DDIA and who or what each one serves.</p>
+  <div class="quiz-answer">Operability: easy for the organization (ops) to keep the system running. Simplicity: easy for new engineers to understand. Evolvability: easy to change the system for new requirements in the future.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">What is the difference between essential and accidental complexity, and what does DDIA call the best tool against complexity?</p>
+  <div class="quiz-answer">Essential complexity is inherent in the problem domain; accidental complexity comes from the limitations of our tools (the boundary shifts as tools improve). The best tool is abstraction: a clean interface hiding detail, like SQL hiding storage structures, concurrency and crash recovery.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">Why does DDIA call automation "two-edged" for operability?</p>
+  <div class="quiz-answer">Automation handles the routine cases, leaving humans only the hardest edge cases it can't handle, so the ops team needs more skill, not less. And when an automated system misbehaves, it can be harder to debug than a manual process.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

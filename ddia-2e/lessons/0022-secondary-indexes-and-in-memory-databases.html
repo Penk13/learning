@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Secondary Indexes and In-Memory Databases</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.4 Storage and Retrieval</p>
+  <h1>Secondary Indexes and In-Memory Databases</h1>
+  <p class="dek">Where the row actually lives relative to its indexes, and why "in memory" is fast for a surprising reason.</p>
+</header>
+
+<section>
+<h2>Secondary indexes</h2>
+<p>A <b>primary key</b> uniquely identifies a row, document or vertex. A <b>secondary index</b> (<code>CREATE INDEX</code>) lets you search by other columns, such as <code>user_id</code> in a positions table. Its keys are <b>not unique</b>, so each entry either holds a list of matching row IDs (like a postings list) or is made unique by appending a row ID. Both B-trees and LSM-trees can implement it.</p>
+
+<figure>
+<svg viewBox="0 0 640 200" role="img" aria-label="Three ways to store values in an index. Clustered index: the row lives inside the index. Heap file: the index holds a pointer to the row's location in an unordered heap file. Covering index: the index holds some extra columns so some queries need not visit the row at all.">
+  <text x="105" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--rel)">Clustered</text>
+  <rect x="20" y="30" width="170" height="80" rx="8" class="box"/>
+  <rect x="35" y="62" width="140" height="36" rx="5" fill="var(--rel)" opacity=".85"/>
+  <text x="105" y="85" text-anchor="middle" font-size="11" class="white">key + whole row</text>
+  <text x="105" y="132" text-anchor="middle" font-size="10" class="muted-t">MySQL InnoDB primary key;</text>
+  <text x="105" y="146" text-anchor="middle" font-size="10" class="muted-t">SQL Server: 1 per table</text>
+  <text x="320" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--sca)">Heap file</text>
+  <rect x="235" y="30" width="80" height="80" rx="8" class="box"/>
+  <text x="275" y="62" text-anchor="middle" font-size="11">key</text>
+  <text x="275" y="80" text-anchor="middle" font-size="11">→ ptr</text>
+  <path d="M315 72 H343" class="line"/>
+  <rect x="345" y="30" width="60" height="80" rx="8" fill="var(--sca)" opacity=".75"/>
+  <text x="375" y="66" text-anchor="middle" font-size="10" class="white">heap</text>
+  <text x="375" y="80" text-anchor="middle" font-size="10" class="white">(rows,</text>
+  <text x="375" y="94" text-anchor="middle" font-size="10" class="white">no order)</text>
+  <text x="320" y="132" text-anchor="middle" font-size="10" class="muted-t">PostgreSQL. InnoDB secondary</text>
+  <text x="320" y="146" text-anchor="middle" font-size="10" class="muted-t">indexes point at the primary key</text>
+  <text x="535" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--mai)">Covering</text>
+  <rect x="450" y="30" width="170" height="80" rx="8" class="box"/>
+  <rect x="465" y="62" width="140" height="36" rx="5" fill="var(--mai)" opacity=".85"/>
+  <text x="535" y="85" text-anchor="middle" font-size="11" class="white">key + a few columns</text>
+  <text x="535" y="132" text-anchor="middle" font-size="10" class="muted-t">some queries answered</text>
+  <text x="535" y="146" text-anchor="middle" font-size="10" class="muted-t">from the index alone</text>
+  <text x="320" y="186" text-anchor="middle" font-size="11" class="muted-t">more data in the index → faster reads, but more disk and slower writes</text>
+</svg>
+<figcaption>A covering index is also called an "index with included columns". With a heap file, a value that grows too large must move: then every index is updated, or a <b>forwarding pointer</b> is left behind.</figcaption>
+</figure>
+</section>
+
+<section>
+<h2>Keeping everything in memory</h2>
+<p>Disks are awkward but durable and cheap per GB. As RAM gets cheaper, many datasets simply fit in memory. <b>Memcached</b> is cache-only: losing data on restart is fine. Durable in-memory databases (VoltDB, SingleStore, Oracle TimesTen, RAMCloud) persist via a log on disk, snapshots or replicas; Redis and Couchbase write to disk asynchronously (weaker durability). Reads are served entirely from RAM.</p>
+<div class="callout tip"><b>Counterintuitive:</b> in-memory databases are not faster because they skip disk reads. With enough RAM, the OS page cache serves a disk-based engine from memory anyway. They're faster because they avoid <b>encoding in-memory structures into an on-disk format</b>. Bonus: they can offer structures that are hard on disk, like Redis's priority queues and sets.</div>
+</section>
+
+<section>
+<h2>Embedded storage engines</h2>
+<p>RocksDB, SQLite, LMDB, DuckDB and KùzuDB are libraries running <i>inside</i> your process, called by function rather than over a network. Common in mobile apps. On a backend they fit small data with few concurrent transactions, e.g. <b>one database per tenant</b> when tenants never need to be queried together.</p>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">Why can an in-memory database beat a disk-based one even when all the disk-based database's data sits in the OS page cache?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">It avoids encoding data structures into an on-disk format</button>
+    <button data-answer="wrong">It never writes anything to disk</button>
+    <button data-answer="wrong">RAM has no limit on how much it can hold</button>
+    <button data-answer="wrong">It always uses B-trees internally</button>
+  </div>
+  <div class="quiz-explanation">The speed-up comes from skipping the encoding overhead. Many in-memory databases still write a log or snapshots to disk for durability.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Compare a clustered index, an index pointing into a heap file, and a covering index: where does the row data live in each?</p>
+  <div class="quiz-answer">Clustered: the whole row is stored inside the index (InnoDB primary key). Heap file: the index stores a pointer to the row's location in a separate unordered heap file (PostgreSQL). Covering: the index stores a few extra columns so some queries can be answered from the index alone, with a reference to the full row for the rest.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">A secondary index's keys are not unique. What are the two ways an index entry handles many matching rows?</p>
+  <div class="quiz-answer">Either each index entry holds a list of matching row IDs (like a postings list in full-text search), or each entry is made unique by appending the row ID to the key.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-case">A SaaS backend serves many small tenants whose data is never queried across tenants.</p>
+  <p class="quiz-question">What storage option does DDIA mention for this case, and why does it fit?</p>
+  <div class="quiz-answer">An embedded storage engine such as SQLite, with one database per tenant. Embedded engines run inside the application process (no network hop) and suit small data with few concurrent transactions, which per-tenant databases have.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

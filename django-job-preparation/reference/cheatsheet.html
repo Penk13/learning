@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Django Cheat Sheet</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+  <div class="lesson-shell">
+    <header class="lesson-header">
+      <div class="eyebrow">Django job preparation · Cheat sheet</div>
+      <h1>Django cheat sheet</h1>
+      <p class="dek">Interview-ready models, one section per lesson.</p>
+    </header>
+
+    <section>
+      <h2>Request lifecycle <small>(0001)</small></h2>
+      <div class="flow" aria-label="Request lifecycle from request to response">
+        <div class="flow-node">Request</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Middleware</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">URLconf</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">View</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">ORM / template</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Response</div>
+      </div>
+      <p class="caption">Middleware wraps the path and may short-circuit it. A view can return HTML, a redirect, an error response, JSON, or another response type.</p>
+      <ol class="steps">
+        <li><strong>URLconf selects.</strong> Maps URL path expressions to view callables; patterns checked in order, first match wins.</li>
+        <li><strong>The view decides.</strong> Receives the request, returns an <code>HttpResponse</code>. Not the same thing as a template.</li>
+        <li><strong>The model describes data.</strong> A Python class that generally maps to a table; the ORM is the access API.</li>
+      </ol>
+      <blockquote>“Django receives the request through its middleware stack, resolves the URL against the root URLconf in order, and calls the first matching view with an <code>HttpRequest</code> plus captured parameters. The view does the work, possibly querying the ORM or rendering a template, and returns an <code>HttpResponse</code>, which travels back through middleware to the client. A missing match or exception goes to Django's error handlers.”</blockquote>
+      <div class="callout"><strong>Common correction:</strong> not “Django finds the template from the URL.” The URL resolves to a view; the view may render a template, redirect, return JSON, or produce another response.</div>
+      <p class="caption">Source: <a href="https://docs.djangoproject.com/en/stable/topics/http/urls/">Django URL dispatcher</a>.</p>
+    </section>
+  </div>
+</body>
+</html>

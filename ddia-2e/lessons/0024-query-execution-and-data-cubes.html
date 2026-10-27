@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Query Execution, Materialized Views and Data Cubes</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.4 Storage and Retrieval</p>
+  <h1>Query Execution, Materialized Views and Data Cubes</h1>
+  <p class="dek">When scans cover millions of rows, the CPU becomes the bottleneck; precomputing results is the other escape.</p>
+</header>
+
+<section>
+<h2>Making the CPU fast enough</h2>
+<p>Scanning millions of rows makes <b>CPU time</b>, not just disk reads, a bottleneck. A naive interpreter that consults the query plan for every row is too slow. Two fixes:</p>
+
+<div class="grid">
+  <div class="card rel"><h4 class="c-rel">🛠 Query compilation</h4><p>Generate code for this specific query, compile it to machine code (often with <b>LLVM</b>), and run it over the column data in memory. Like a JIT compiler in the JVM.</p></div>
+  <div class="card sca"><h4 class="c-sca">📦 Vectorized processing</h4><p>Still interpreted, but each built-in operator processes a <b>batch</b> of column values at once. "product = bananas" → a bitmap; "store = X" → a bitmap; bitwise AND → matching sales.</p></div>
+</div>
+<p>Both exploit modern CPUs: <b>sequential memory access</b> (fewer cache misses), <b>tight inner loops</b> (no branch mispredictions), <b>parallelism</b> (threads and <b>SIMD</b>: one instruction processing several values), and working <b>directly on compressed data</b>.</p>
+</section>
+
+<section>
+<h2>Materialized views and data cubes</h2>
+<p>A <b>virtual view</b> is a saved query, expanded at read time. A <b>materialized view</b> is a stored copy of the results that must be updated when the data changes: more write work, faster repeated reads (the precomputed home timelines of a social network are one). A <b>data cube</b> (OLAP cube) materializes aggregates over a grid of dimensions:</p>
+
+<figure>
+<svg viewBox="0 0 640 210" role="img" aria-label="Two-dimensional data cube: rows are dates, columns are products, each cell holds the sum of net price for that date and product. Row totals give sales per date, column totals give sales per product.">
+  <g font-size="11" font-family="var(--mono)" text-anchor="middle">
+    <text x="90" y="30" font-weight="700" font-family="var(--sans)">date ↓ / product →</text>
+    <text x="210" y="30" font-weight="700">32</text><text x="290" y="30" font-weight="700">33</text><text x="370" y="30" font-weight="700">34</text><text x="450" y="30" font-weight="700">35</text>
+    <text x="545" y="30" font-weight="700" fill="var(--accent)">total</text>
+    <text x="90" y="62">140101</text><text x="90" y="94">140102</text><text x="90" y="126">140103</text>
+    <g fill="var(--card-2)" stroke="var(--rule)">
+      <rect x="175" y="42" width="70" height="28" rx="4"/><rect x="255" y="42" width="70" height="28" rx="4"/><rect x="335" y="42" width="70" height="28" rx="4"/><rect x="415" y="42" width="70" height="28" rx="4"/>
+      <rect x="175" y="74" width="70" height="28" rx="4"/><rect x="255" y="74" width="70" height="28" rx="4"/><rect x="335" y="74" width="70" height="28" rx="4"/><rect x="415" y="74" width="70" height="28" rx="4"/>
+      <rect x="175" y="106" width="70" height="28" rx="4"/><rect x="255" y="106" width="70" height="28" rx="4"/><rect x="335" y="106" width="70" height="28" rx="4"/><rect x="415" y="106" width="70" height="28" rx="4"/>
+    </g>
+    <text x="210" y="61">149.60</text><text x="290" y="61">31.01</text><text x="370" y="61">84.58</text><text x="450" y="61">28.50</text>
+    <text x="210" y="93">132.18</text><text x="290" y="93">19.78</text><text x="370" y="93">82.91</text><text x="450" y="93">10.50</text>
+    <text x="210" y="125">196.75</text><text x="290" y="125">40.01</text><text x="370" y="125">87.61</text><text x="450" y="125">22.27</text>
+    <text x="545" y="61" fill="var(--accent)">293.69</text><text x="545" y="93" fill="var(--accent)">245.37</text><text x="545" y="125" fill="var(--accent)">346.64</text>
+    <text x="90" y="160" font-weight="700" fill="var(--accent)">total</text>
+    <text x="210" y="160" fill="var(--accent)">478.53</text><text x="290" y="160" fill="var(--accent)">90.80</text><text x="370" y="160" fill="var(--accent)">255.10</text><text x="450" y="160" fill="var(--accent)">61.27</text>
+  </g>
+  <text x="320" y="192" text-anchor="middle" font-size="11" class="muted-t">each cell = SUM(net_price) for that date × product (toy numbers)</text>
+</svg>
+<figcaption>Real cubes have five or more dimensions. "Total per date" becomes a lookup, not a scan. But you can't ask about anything that isn't a dimension (e.g. "sales of items over $100"), so warehouses keep the <b>raw data</b> and use cubes only as a speed-up.</figcaption>
+</figure>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">A data cube aggregates net sales by date and product. Which question can it NOT answer without going back to the raw data?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">Total sales of items priced over $100</button>
+    <button data-answer="wrong">Total sales on one particular date</button>
+    <button data-answer="wrong">Total sales of one product across all dates</button>
+    <button data-answer="wrong">Sales of one product on one date</button>
+  </div>
+  <div class="quiz-explanation">A cube only answers questions along its dimensions. Price isn't a dimension here, so that question needs the raw fact rows, which is why warehouses keep them.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Compare query compilation and vectorized processing as ways to speed up analytic queries. What CPU properties do both exploit?</p>
+  <div class="quiz-answer">Query compilation generates and compiles machine code for the specific query (e.g. via LLVM). Vectorized processing stays interpreted but runs built-in operators over batches of column values. Both exploit sequential memory access, tight loops without branch mispredictions, parallelism (threads and SIMD), and operating directly on compressed data.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">What is the difference between a virtual view and a materialized view, and what does each cost?</p>
+  <div class="quiz-answer">A virtual view is a saved query, expanded each time it's read: no extra storage or write work, but the full query runs on every read. A materialized view stores the query's results: fast repeated reads, but it takes space and must be updated whenever the underlying data changes.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Faults, Failures and Reliability</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.2 Defining Nonfunctional Requirements</p>
+  <h1>Faults, Failures and Reliability</h1>
+  <p class="dek">Parts will break. Reliability means the system as a whole keeps working anyway.</p>
+</header>
+
+<section>
+<p>"Working correctly" = does what users expect, tolerates user mistakes, performs well enough under expected load, and prevents unauthorized access. <b>Reliability</b> ≈ continuing to work correctly <i>even when things go wrong</i>.</p>
+
+<figure>
+<svg viewBox="0 0 640 210" role="img" aria-label="A fault in one component is absorbed by fault tolerance so users see no failure; without tolerance the faulty part is a single point of failure and the system fails">
+  <text x="0" y="22" font-size="12" font-weight="700" fill="var(--good)">WITH fault tolerance</text>
+  <rect x="0" y="32" width="150" height="56" rx="10" class="box"/>
+  <text x="75" y="57" text-anchor="middle" font-size="13">💥 one disk dies</text>
+  <text x="75" y="75" text-anchor="middle" font-size="11" class="muted-t">= a FAULT</text>
+  <path d="M150 60 H250" class="line" marker-end="url(#ar2)"/>
+  <rect x="252" y="28" width="16" height="64" rx="4" fill="var(--rel)"/>
+  <text x="260" y="108" text-anchor="middle" font-size="11" fill="var(--rel)">another copy,</text>
+  <text x="260" y="122" text-anchor="middle" font-size="11" fill="var(--rel)">another node…</text>
+  <path d="M268 60 H420" stroke="var(--rule)" stroke-width="1.6" stroke-dasharray="4 4" fill="none"/>
+  <rect x="422" y="32" width="210" height="56" rx="10" fill="var(--good-bg)" stroke="var(--good)"/>
+  <text x="527" y="57" text-anchor="middle" font-size="13">😊 SLO still met</text>
+  <text x="527" y="75" text-anchor="middle" font-size="11" class="muted-t">no FAILURE</text>
+  <text x="0" y="150" font-size="12" font-weight="700" fill="var(--bad)">WITHOUT: the disk is a single point of failure (SPOF)</text>
+  <rect x="0" y="158" width="150" height="46" rx="10" class="box"/>
+  <text x="75" y="186" text-anchor="middle" font-size="13">💥 one disk dies</text>
+  <path d="M150 181 H420" stroke="var(--bad)" stroke-width="2" fill="none" marker-end="url(#ar3)"/>
+  <rect x="422" y="158" width="210" height="46" rx="10" fill="var(--bad-bg)" stroke="var(--bad)"/>
+  <text x="527" y="186" text-anchor="middle" font-size="13">😡 SLO missed = FAILURE</text>
+  <defs>
+    <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker>
+    <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--bad)"/></marker>
+  </defs>
+</svg>
+<figcaption><b>Fault</b> = one part stops working correctly. <b>Failure</b> = the system as a whole stops providing the required service, i.e. <b>misses its SLO</b>. A dead disk is a failure <i>of the disk</i> but only a fault <i>of the bigger system</i>.</figcaption>
+</figure>
+
+<ul>
+  <li><b>Fault-tolerant</b> = keeps serving users despite <i>certain</i> faults, always limited ("up to 2 disks", "1 of 3 nodes").</li>
+  <li><b>Fault injection</b>: deliberately kill processes so recovery code is exercised constantly; many critical bugs are just poor error handling. The discipline is <b>chaos engineering</b>.</li>
+  <li><b>Prevent</b> rather than tolerate where no cure exists, e.g. security: leaked data can't be un-leaked.</li>
+</ul>
+</section>
+
+<section>
+<h2>Three sources of faults</h2>
+<div class="table-wrap">
+<table class="compare">
+  <tr><th></th><th>Shape</th><th>Defence</th></tr>
+  <tr><td><b>🖥 Hardware</b><br><small>HDDs fail 2–5%/yr; RAM errors; whole datacenters lost</small></td><td>Mostly <b>independent</b> (racks and datacenters still fail together)</td><td>Redundancy, now software that tolerates losing machines, racks or <b>availability zones</b>; enables <b>rolling upgrades</b></td></tr>
+  <tr><td><b>🐛 Software</b><br><small>2012 leap-second bug; runaway processes; cascading failures</small></td><td>Highly <b>correlated</b>: every node runs the same code. Bugs lie dormant until an assumption stops being true</td><td>Question assumptions, testing, process isolation, crash-and-restart, avoid retry feedback loops, monitor in production</td></tr>
+  <tr><td><b>🧑 Human</b><br><small>Config changes: a leading cause of outages</small></td><td>"Human error" is a <b>symptom</b> of the sociotechnical system, not the cause</td><td>Testing, fast config rollback, gradual rollouts, observability, interfaces that make the right thing easy, <b>blameless postmortems</b></td></tr>
+</table>
+</div>
+
+<div class="callout warn"><b>Why software faults are the scariest:</b> redundancy assumes faults are independent. If all replicas run the same bug, they fail together, at the same instant.</div>
+
+<p><b>Blameless culture.</b> "Bob should have been more careful" doesn't help. When a preventable mistake happens, the problem is usually the organization's priorities (features over resilience), not the person. Blameless postmortems let people share full details so everyone learns.</p>
+
+<p><b>How much does it matter?</b> A few minutes of downtime is often tolerable; <b>permanent data loss or corruption is catastrophic</b>. In the UK <b>Post Office Horizon</b> scandal, accounting-software bugs led to hundreds of wrongful theft and fraud convictions. Cutting reliability corners (say, for a prototype) can be fine, but do it consciously.</p>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">One disk in a 3-node database cluster dies. Users notice nothing. In DDIA's terms, this was…</p>
+  <div class="quiz-options">
+    <button data-answer="correct">A fault, not a failure</button>
+    <button data-answer="wrong">A failure, not a fault</button>
+    <button data-answer="wrong">Both a fault and a failure</button>
+    <button data-answer="wrong">Neither a fault nor a failure</button>
+  </div>
+  <div class="quiz-explanation">A component stopped working (fault), but the system still met its SLO, so there was no failure. Fault tolerance worked.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Which kind of fault is least helped by adding more replicas or servers, and why?</p>
+  <div class="quiz-answer">Software faults. Every replica runs the same code, so a bug triggered by the same input or condition hits them all at once (correlated faults). Redundancy only helps against independent faults, like most hardware faults.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-case">An operator pushes a bad configuration change and takes the service down. A manager wants to know who to blame.</p>
+  <p class="quiz-question">How does DDIA frame this incident, and what defences does it suggest?</p>
+  <div class="quiz-answer">"Human error" is a symptom of the sociotechnical system, not the root cause; the fix is in the system and priorities, not blaming a person. Defences: testing, fast config rollback, gradual rollouts, monitoring and observability, interfaces that make the right thing easy, and blameless postmortems so people share full details.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">What is fault injection (chaos engineering), and why deliberately cause faults?</p>
+  <div class="quiz-answer">Deliberately triggering faults, such as killing processes or machines, in a running system. It keeps the fault-tolerance and recovery code constantly exercised, because many critical bugs hide in rarely run error-handling paths.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

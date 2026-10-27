@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Case Study: Social Network Home Timelines</title>
+<link rel="stylesheet" href="../assets/course.css">
+<script src="../assets/widgets.js" defer></script>
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.2 Defining Nonfunctional Requirements</p>
+  <h1>Case Study: Social Network Home Timelines</h1>
+  <p class="dek">Nonfunctional requirements made concrete: do the work when reading, or when writing?</p>
+</header>
+
+<section>
+<h2>What vs how well</h2>
+<p><b>Functional</b> requirements say <i>what</i> the app does: screens, buttons, operations. <b>Nonfunctional</b> requirements say <i>how well</i>: fast, reliable, secure, compliant, easy to maintain. They're often unwritten because they seem obvious, but an app that's unbearably slow or unreliable might as well not exist. The chapter covers four: <b>performance</b>, <b>reliability</b>, <b>scalability</b> and <b>maintainability</b> (security is mostly outside the book).</p>
+<div class="callout tip">Functional: "students can register for a class." Nonfunctional: "…in under a second at p99, even on registration day, even if a server dies, and next year's team can still change it."</div>
+</section>
+
+<section>
+<h2>The case: an X/Twitter-style network</h2>
+<p>Users post and follow each other. Assumptions: <b>500M posts/day ≈ 5,800 posts/s</b> (spikes up to 150k/s); the average user follows 200 people and has 200 followers, but a few celebrities have <b>100M+</b>. Followers should see a post within <b>5 seconds</b>.</p>
+
+<figure>
+<svg viewBox="0 0 640 230" role="img" aria-label="Approach one: client polls a join query over the posts and follows tables every five seconds. Approach two: each new post is fanned out into every follower's precomputed timeline cache, and clients read from the cache.">
+  <text x="0" y="18" font-size="13" font-weight="700" fill="var(--bad)">Approach 1 · query on read (polling)</text>
+  <rect x="0" y="30" width="110" height="50" rx="10" class="box"/>
+  <text x="55" y="52" text-anchor="middle" font-size="13">👤 Client</text>
+  <text x="55" y="69" text-anchor="middle" font-size="10" class="muted-t">every 5 s</text>
+  <path d="M110 55 H200" class="line" marker-end="url(#a1)"/>
+  <rect x="202" y="30" width="190" height="50" rx="10" class="box"/>
+  <text x="297" y="51" text-anchor="middle" font-size="12" font-weight="700">JOIN posts × follows</text>
+  <text x="297" y="68" text-anchor="middle" font-size="10" class="muted-t">sort, LIMIT 1000</text>
+  <text x="410" y="50" font-size="12" fill="var(--bad)">2M queries/s × 200</text>
+  <text x="410" y="67" font-size="12" font-weight="700" fill="var(--bad)">= 400M lookups/s</text>
+  <text x="0" y="122" font-size="13" font-weight="700" fill="var(--good)">Approach 2 · materialize on write (fan-out)</text>
+  <rect x="0" y="134" width="110" height="50" rx="10" class="box"/>
+  <text x="55" y="156" text-anchor="middle" font-size="13">✍ New post</text>
+  <text x="55" y="173" text-anchor="middle" font-size="10" class="muted-t">5.8k/s</text>
+  <path d="M110 159 L200 140" class="line" marker-end="url(#a1)"/>
+  <path d="M110 159 L200 160" class="line" marker-end="url(#a1)"/>
+  <path d="M110 159 L200 180" class="line" marker-end="url(#a1)"/>
+  <g>
+    <rect x="202" y="130" width="110" height="18" rx="4" fill="var(--sca)" opacity=".35"/>
+    <rect x="202" y="152" width="110" height="18" rx="4" fill="var(--sca)" opacity=".35"/>
+    <rect x="202" y="174" width="110" height="18" rx="4" fill="var(--sca)" opacity=".35"/>
+  </g>
+  <text x="257" y="143" text-anchor="middle" font-size="10">follower A timeline</text>
+  <text x="257" y="165" text-anchor="middle" font-size="10">follower B timeline</text>
+  <text x="257" y="187" text-anchor="middle" font-size="10">… × 200</text>
+  <text x="257" y="212" text-anchor="middle" font-size="11" class="muted-t">materialized view (cache)</text>
+  <path d="M312 161 H400" class="line" marker-end="url(#a1)"/>
+  <rect x="402" y="136" width="110" height="50" rx="10" class="box"/>
+  <text x="457" y="158" text-anchor="middle" font-size="13">👤 Client</text>
+  <text x="457" y="175" text-anchor="middle" font-size="10" class="muted-t">reads cache</text>
+  <text x="525" y="154" font-size="12" fill="var(--good)">~1.16M</text>
+  <text x="525" y="170" font-size="12" fill="var(--good)">writes/s</text>
+  <defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>
+</svg>
+<figcaption>Approach 2 does more work per post but far less in total, and makes the frequent operation (reading) cheap.</figcaption>
+</figure>
+
+<p>When one request triggers many downstream requests, the multiplication factor is the <b>fan-out</b>. Precomputing a query's result and keeping it updated is <b>materialization</b>; the timeline cache is a <b>materialized view</b>. Try both designs:</p>
+
+<div class="widget" data-widget="fanout"></div>
+
+<div class="grid">
+  <div class="card"><h4>🌟 Celebrities</h4><p>Fanning out to 100M timelines is too much. Store celebrity posts separately and <b>merge them in at read time</b>: a hybrid.</p></div>
+  <div class="card"><h4>📚 Super-followers</h4><p>Someone following thousands of busy accounts won't read everything, so it's OK to <b>drop some writes</b> and show a sample.</p></div>
+  <div class="card"><h4>⚡ Spikes</h4><p>Enqueue timeline deliveries. Posts show up a bit later, but reads stay fast because they come from the cache.</p></div>
+</div>
+
+<p class="big-idea">Do work at write time when that makes the frequent operation cheap. But the <i>extreme cases</i>, not the average, often decide the design.</p>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">In DDIA's social-network case study, why materialize home timelines instead of polling a join query?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">~1.16M timeline writes/s beats ~400M lookups/s</button>
+    <button data-answer="wrong">SQL databases cannot join posts with follows</button>
+    <button data-answer="wrong">Celebrities have very few followers to update</button>
+    <button data-answer="wrong">Posting happens more often than reading</button>
+  </div>
+  <div class="quiz-explanation">5.8k posts/s × 200 followers ≈ 1.16M timeline writes/s, versus 2M polls/s × 200 follows = 400M lookups/s. Pay once at write time; reads become a cache hit.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Define fan-out and materialized view, using a social-network home timeline as the example.</p>
+  <div class="quiz-answer">Fan-out: the factor by which one request multiplies into downstream requests; one new post becomes one write per follower. Materialized view: a precomputed query result kept up to date; each user's timeline cache, updated whenever someone they follow posts.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">With fan-out on write, how does the design handle celebrities with 100M followers, and sudden posting spikes?</p>
+  <div class="quiz-answer">Celebrity posts aren't fanned out: they're stored separately and merged into the timeline at read time. Spikes are absorbed by queueing the timeline deliveries, so posts appear a little later while reads stay fast from the cache.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">What is the difference between functional and nonfunctional requirements? Give the four nonfunctional ones DDIA Ch.2 covers.</p>
+  <div class="quiz-answer">Functional: what the app does (screens, operations). Nonfunctional: how well it does it. Ch.2 covers performance, reliability, scalability and maintainability (security matters too but is mostly outside the book).</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

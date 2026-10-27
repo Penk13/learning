@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Distributed vs Single-Node Systems</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.1 Trade-Offs in Data Systems Architecture</p>
+  <h1>Distributed vs Single-Node Systems</h1>
+  <p class="dek">Nine good reasons to spread a system over many machines, and the heavy price you pay for doing it.</p>
+</header>
+
+<section>
+<p>A <b>distributed system</b> is several machines communicating over a network; each participating process is a <b>node</b>.</p>
+
+<h2>Nine reasons to distribute</h2>
+<div class="table-wrap">
+<table class="compare">
+  <tr><th>Reason</th><th>What it means</th></tr>
+  <tr><td>Inherent</td><td>Many users on their own devices</td></tr>
+  <tr><td>Between services</td><td>Data stored in one service, processed in another</td></tr>
+  <tr><td>Fault tolerance</td><td>One machine dies, another takes over</td></tr>
+  <tr><td>Scalability</td><td>More data or compute than one machine can handle</td></tr>
+  <tr><td>Latency</td><td>Servers near users worldwide</td></tr>
+  <tr><td>Elasticity</td><td>Scale up and down with demand; pay for what you use</td></tr>
+  <tr><td>Special hardware</td><td>Disk-heavy storage nodes, CPU-heavy analytics, GPUs for ML</td></tr>
+  <tr><td>Legal</td><td>Data residency laws: keep citizens' data in-country</td></tr>
+  <tr><td>Sustainability</td><td>Run jobs where and when renewable power is plentiful</td></tr>
+</table>
+</div>
+
+<div class="callout warn"><b>The price of distribution</b>
+<ul style="margin:.4em 0 0">
+  <li>Any network call can fail or <b>time out</b>, and then you don't know whether the request was processed. Blindly retrying may be unsafe.</li>
+  <li>A network call is <b>vastly slower</b> than a function call. A single-threaded program on one machine can beat a 100+ core cluster.</li>
+  <li>Debugging is hard, so you need <b>observability</b> (tracing with OpenTelemetry, Zipkin, Jaeger).</li>
+  <li>When each service has its own database, <b>consistency across services becomes the app's problem</b>.</li>
+</ul></div>
+
+<p class="big-idea">Don't rush to distribute. Hardware has grown huge and fast; with single-node databases like SQLite or DuckDB, many workloads fit on one machine.</p>
+</section>
+
+<section>
+<h2>Microservices and serverless</h2>
+<div class="grid">
+  <div class="card"><h4>🧩 Microservices</h4>
+    <p>Each service: one purpose, an API, one owning team, <b>its own database</b> (a shared database makes its schema part of everyone's API).</p>
+    <p>👍 Independent deploys, right-sized resources, freedom to change internals. 👎 Hard to test, per-service infrastructure (deploys, logs, monitoring, on-call), APIs hard to evolve.</p>
+    <p><b>A technical solution to a people problem</b>: it lets many teams move independently. A small organization with few teams probably doesn't need it.</p></div>
+  <div class="card"><h4>⚡ Serverless (FaaS)</h4>
+    <p>The cloud allocates resources per request and you pay only while your code runs: metered billing for compute.</p>
+    <p>👎 Execution time limits, restricted runtimes, slow <b>cold starts</b>. It still runs on servers, just not the same one each time.</p></div>
+</div>
+
+<p><b>Cloud vs supercomputing (HPC).</b> HPC runs huge batch jobs (weather, molecular simulation), checkpoints them, and on a node failure stops everything and restarts from the checkpoint. It trusts its users. Cloud services must stay <i>continuously available</i>, isolate tenants who don't trust each other, and may span regions. The book is about the cloud kind.</p>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">According to DDIA, microservices are primarily…</p>
+  <div class="quiz-options">
+    <button data-answer="correct">A technical solution to a people problem</button>
+    <button data-answer="wrong">A way to make each request faster</button>
+    <button data-answer="wrong">Required for any cloud deployment</button>
+    <button data-answer="wrong">A way to avoid needing operations work</button>
+  </div>
+  <div class="quiz-explanation">They let many teams progress independently. With few teams they're often unnecessary overhead.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Your service calls another service and the request times out. What do you know about whether the work was done, and why does that matter?</p>
+  <div class="quiz-answer">Nothing: the request may have been lost, processed with the reply lost, or still be running. So a blind retry may do the work twice and can be unsafe.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">Give five of the nine reasons DDIA lists for building a distributed system.</p>
+  <div class="quiz-answer">Inherent distribution (users on many devices), work between services, fault tolerance, scalability, low latency for users worldwide, elasticity, special hardware, legal data residency, and sustainability (run where renewable power is plentiful).</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-case">A three-person team proposes splitting a modest internal app into twelve microservices, each with its own database, "so it scales".</p>
+  <p class="quiz-question">What would DDIA push back with?</p>
+  <div class="quiz-answer">Microservices mainly solve a people problem (many teams moving independently), which a three-person team doesn't have. They add costs: network failures and timeouts, slower calls, harder testing and debugging, per-service operations, and cross-service consistency handled by the app. If the workload fits one node, a single-node design is simpler and may be faster.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Event Sourcing and CQRS</title>
+<link rel="stylesheet" href="../assets/course.css">
+<script src="../assets/widgets.js" defer></script>
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.3 Data Models and Query Languages</p>
+  <h1>Event Sourcing and CQRS</h1>
+  <p class="dek">Write in the form best for writing, an immutable log of events, and derive every read form from it.</p>
+</header>
+
+<section>
+<p>Every other model is <i>queried in the same form it's written</i>. Event sourcing breaks that: <b>write</b> in the form best for writing, then <b>derive</b> read-optimized forms. The simplest, fastest and most expressive way to write is an <b>append-only log of immutable events</b>.</p>
+
+<figure>
+<svg viewBox="0 0 640 200" role="img" aria-label="Commands are validated and become events appended to an immutable log. The log feeds several materialized views: booking status, an organizer dashboard, and a badge printing file.">
+  <defs><marker id="e1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>
+  <rect x="0" y="76" width="100" height="48" rx="10" class="box"/>
+  <text x="50" y="97" text-anchor="middle" font-size="12" font-weight="700">Command</text>
+  <text x="50" y="113" text-anchor="middle" font-size="10" class="muted-t">"book 2 seats"</text>
+  <path d="M100 100 H140" class="line" marker-end="url(#e1)"/>
+  <text x="120" y="92" text-anchor="middle" font-size="10" class="muted-t">validate</text>
+  <g>
+    <rect x="142" y="60" width="210" height="80" rx="8" fill="var(--card-2)" stroke="var(--rule)"/>
+    <text x="247" y="54" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)">Event log (source of truth)</text>
+    <rect x="150" y="70" width="44" height="60" rx="4" fill="var(--accent)" opacity=".35"/>
+    <rect x="200" y="70" width="44" height="60" rx="4" fill="var(--accent)" opacity=".5"/>
+    <rect x="250" y="70" width="44" height="60" rx="4" fill="var(--accent)" opacity=".65"/>
+    <rect x="300" y="70" width="44" height="60" rx="4" fill="var(--accent)" opacity=".85"/>
+    <text x="172" y="104" text-anchor="middle" font-size="9">Opened</text>
+    <text x="222" y="104" text-anchor="middle" font-size="9">Booked</text>
+    <text x="272" y="104" text-anchor="middle" font-size="9">Booked</text>
+    <text x="322" y="104" text-anchor="middle" font-size="9" class="white">Cancelled</text>
+    <text x="247" y="158" text-anchor="middle" font-size="10" class="muted-t">append-only · ordered · past tense</text>
+  </g>
+  <path d="M352 100 L430 40" class="line" marker-end="url(#e1)"/>
+  <path d="M352 100 H430" class="line" marker-end="url(#e1)"/>
+  <path d="M352 100 L430 160" class="line" marker-end="url(#e1)"/>
+  <rect x="432" y="20" width="200" height="38" rx="8" class="box"/><text x="532" y="44" text-anchor="middle" font-size="11">📋 booking status view</text>
+  <rect x="432" y="81" width="200" height="38" rx="8" class="box"/><text x="532" y="105" text-anchor="middle" font-size="11">📊 organizer dashboard</text>
+  <rect x="432" y="142" width="200" height="38" rx="8" class="box"/><text x="532" y="166" text-anchor="middle" font-size="11">🖨 badge print file</text>
+  <text x="532" y="196" text-anchor="middle" font-size="10" class="muted-t">materialized views = projections = read models</text>
+</svg>
+<figcaption>A conference-booking system. <b>Event sourcing</b>: events are the source of truth. <b>CQRS</b> (command query responsibility segregation): separate read-optimized views derived from the write-optimized log. Both terms come from domain-driven design.</figcaption>
+</figure>
+
+<p>A <b>command</b> is validated first; only a valid one becomes a <b>fact</b>, appended as an event. So the log holds only valid events, and a view builder <b>may not reject</b> one. Name events in the <b>past tense</b> ("seats were booked"): a later cancellation doesn't erase the fact that the booking existed. Try it:</p>
+
+<div class="widget" data-widget="event-sourcing"></div>
+
+<div class="grid">
+  <div class="card" style="border-top:4px solid var(--good)"><h4>👍 Why it's attractive</h4>
+    <ul style="margin:.3em 0;padding-left:1.1em">
+      <li>Events state <b>intent</b> ("booking cancelled", not "active=false on row 4001").</li>
+      <li>Views are <b>reproducible</b>: delete, fix the code, replay.</li>
+      <li>Many views in any model; a new feature can build a new view from the old log.</li>
+      <li>Mistakes fixed by a compensating event: <b>fewer irreversible actions</b>.</li>
+      <li>Built-in <b>audit log</b>; sequential appends absorb write bursts.</li>
+    </ul></div>
+  <div class="card" style="border-top:4px solid var(--bad)"><h4>👎 Watch out for</h4>
+    <ul style="margin:.3em 0;padding-left:1.1em">
+      <li><b>External data</b> (exchange rates) must be in the event or looked up as of the event's time, or replays give different results.</li>
+      <li><b>Immutability vs deletion laws</b>: per-user logs, personal data kept outside events, or <b>crypto-shredding</b> (delete the key). Each makes rebuilding harder.</li>
+      <li><b>Side effects</b> on replay: don't resend confirmation emails.</li>
+      <li>All views must process events in <b>exactly the same order</b>, hard in distributed systems.</li>
+    </ul></div>
+</div>
+
+<p>Tools: EventStoreDB, MartenDB (on PostgreSQL), Axon, or Kafka with stream processors. A star-schema fact table also records past events, but its rows share one shape and are unordered; in event sourcing, event types differ and <b>order matters</b>.</p>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">In an event-sourced system, a bug in a view's code has corrupted the view. How do you recover?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">Fix the code, delete the view, replay the events</button>
+    <button data-answer="wrong">Edit the events already in the log</button>
+    <button data-answer="wrong">Restore last week's database backup</button>
+    <button data-answer="wrong">Make the view reject the bad events</button>
+  </div>
+  <div class="quiz-explanation">Views are derived reproducibly from the immutable log, so rebuild them by replaying the same events in the same order with fixed code. Views may never reject events.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">In event sourcing, what is the difference between a command and an event, and why are events named in the past tense?</p>
+  <div class="quiz-answer">A command is a request that is validated and may be rejected. An event is the fact recorded after a valid command; it is immutable and views may not reject it. Past tense ("seats were booked") because it records something that happened; a later cancellation is a new event and doesn't erase the earlier fact.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">Name three pitfalls of event sourcing.</p>
+  <div class="quiz-answer">External data (e.g. exchange rates) must be stored in the event or looked up as of the event time, or replays differ. Immutable logs clash with deletion rights such as the GDPR (workarounds: per-user logs, data outside events, crypto-shredding). Replays must not repeat side effects like emails. And every view must process events in exactly the same order.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-case">A university records grade changes by overwriting the grade column in a table. Someone proposes an event log of grade changes instead.</p>
+  <p class="quiz-question">What would event sourcing gain here?</p>
+  <div class="quiz-answer">Each change is kept as an immutable, past-tense event stating intent (e.g. "grade corrected after appeal"), giving a built-in audit log. Current grades, transcripts and statistics become views that can be rebuilt or added later by replaying the log, and mistakes are fixed with compensating events instead of irreversible overwrites.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

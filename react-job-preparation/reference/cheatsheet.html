@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>React Cheat Sheet</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+  <div class="lesson-shell">
+    <header class="lesson-header">
+      <div class="eyebrow">React JS job preparation · Cheat sheet</div>
+      <h1>React cheat sheet</h1>
+      <p class="dek">Interview-ready models, one section per lesson.</p>
+    </header>
+
+    <section>
+      <h2>List rendering <small>(0001)</small></h2>
+      <div class="flow" aria-label="Data to React list pipeline">
+        <div class="flow-node">Array of data</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><code>filter()</code> if needed</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><code>map()</code> to JSX</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Stable <code>key</code></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">Render the array</div>
+      </div>
+      <div class="grid">
+        <div class="card">
+          <h3><code>map()</code></h3>
+          <p>Calls a callback for each item and returns a <strong>new array</strong> of the results.</p>
+          <div class="code-card"><pre><code>const items = names.map(name =&gt; &lt;li&gt;{name}&lt;/li&gt;);</code></pre></div>
+        </div>
+        <div class="card">
+          <h3>Destructuring</h3>
+          <p>Unpacks properties into local bindings, including in a callback parameter.</p>
+          <div class="code-card"><pre><code>people.map(({ id, name }) =&gt; (
+  &lt;li key={id}&gt;{name}&lt;/li&gt;
+));</code></pre></div>
+        </div>
+        <div class="card">
+          <h3>Keys</h3>
+          <p>Stable identity for an item among its siblings. Prefer a persistent data ID.</p>
+          <p class="micro">Avoid indexes when order can change; never use <code>Math.random()</code>.</p>
+        </div>
+        <div class="card">
+          <h3>Immutability</h3>
+          <p><code>map()</code>, <code>filter()</code>, <code>slice()</code> and spread create new arrays. <code>push()</code>, <code>pop()</code> and <code>splice()</code> mutate.</p>
+          <p class="micro">Object/array spread is a <strong>shallow</strong> copy: nested objects are still shared.</p>
+        </div>
+        <div class="card">
+          <h3>Arrow bodies</h3>
+          <p><code>x =&gt; (&lt;li/&gt;)</code> returns implicitly; <code>x =&gt; { … }</code> needs <code>return</code>.</p>
+        </div>
+      </div>
+      <div class="callout warning"><strong>Interview distinction.</strong> <code>key</code> is used by React to track list items; it is not passed to the component as a normal prop. If the component needs the ID, pass a separate prop such as <code>itemId={id}</code>.</div>
+      <blockquote>“I keep the source data as an array, optionally filter it, then <code>map()</code> each record into JSX. Each element gets a stable key from the data so React can match items when the collection changes. I avoid mutating arrays, especially in state, and use non-mutating methods or spread to produce the next array.”</blockquote>
+      <p class="caption">Source: <a href="https://react.dev/learn/rendering-lists">React — Rendering Lists</a>.</p>
+    </section>
+  </div>
+</body>
+</html>

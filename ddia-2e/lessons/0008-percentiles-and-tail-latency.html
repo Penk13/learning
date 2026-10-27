@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Percentiles and Tail Latency</title>
+<link rel="stylesheet" href="../assets/course.css">
+<script src="../assets/widgets.js" defer></script>
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.2 Defining Nonfunctional Requirements</p>
+  <h1>Percentiles and Tail Latency</h1>
+  <p class="dek">Response time is a distribution, not a number. The slow tail matters more than it looks.</p>
+</header>
+
+<section>
+<h2>Use percentiles, not the mean</h2>
+<p>The mean is useful for estimating throughput limits, but it doesn't tell you how many users actually felt a given delay. Sort the response times instead: <b>pX</b> is the time X% of requests are faster than. Drag the outlier slider:</p>
+
+<div class="widget" data-widget="percentiles"></div>
+
+<div class="grid">
+  <div class="card"><h4>p50 (median)</h4><p>Half of requests are faster. How long users <i>typically</i> wait.</p></div>
+  <div class="card"><h4>p95 · p99 · p999</h4><p>The <b>tail</b>. Amazon targets p999 for internal services: the slowest requests often belong to customers with the most data, the most valuable ones. p9999 was judged too costly.</p></div>
+  <div class="card"><h4>SLO / SLA</h4><p><b>SLO</b> = target, e.g. "p50 &lt; 200 ms, p99 &lt; 1 s, ≥ 99.9% non-error". <b>SLA</b> = contract saying what happens if the SLO is missed (e.g. refunds).</p></div>
+</div>
+</section>
+
+<section>
+<h2>Tail latency amplification</h2>
+<p>If one user request needs several backend calls, even in parallel, it waits for the <i>slowest</i>. Rare slowness per call becomes common slowness per page. With <i>n</i> calls that are each slow with probability <i>p</i>:</p>
+<p class="big-idea">P(page is slow) = 1 − (1 − p)<sup>n</sup></p>
+<p>Ten calls at 1% each: 1 − 0.99<sup>10</sup> ≈ 9.6% of pages are slow.</p>
+
+<div class="widget" data-widget="tail-amplification"></div>
+</section>
+
+<section>
+<h2>Computing percentiles on a dashboard</h2>
+<ul>
+  <li>Keep a rolling window (e.g. the last 10 minutes) and recompute every minute.</li>
+  <li>Sorting all values works; at scale use sketch libraries such as HdrHistogram, t-digest, OpenHistogram or DDSketch.</li>
+  <li><b>Never average percentiles</b> across machines or time buckets: it's mathematically meaningless. <b>Add the histograms</b>, then compute the percentile.</li>
+</ul>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">A page makes 10 parallel backend calls; each call has a 1% chance of being slow. Roughly what share of page loads are slow?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">About 10%</button>
+    <button data-answer="wrong">About 1%</button>
+    <button data-answer="wrong">About 0.1%</button>
+    <button data-answer="wrong">About 50%</button>
+  </div>
+  <div class="quiz-explanation">1 − 0.99¹⁰ ≈ 9.6%. The page waits for its slowest call: tail latency amplification.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Why does DDIA prefer percentiles (p50, p99) over the mean for describing response time?</p>
+  <div class="quiz-answer">The mean hides how many users actually experienced a delay; a few outliers skew it. The median (p50) shows the typical wait, and high percentiles (the tail) show how bad it gets for the slowest requests, which are often the most valuable users.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-case">You have the p99 response time of each of five servers and need a p99 for the whole cluster.</p>
+  <p class="quiz-question">Can you average the five values? If not, what do you do?</p>
+  <div class="quiz-answer">No: averaging percentiles is mathematically meaningless. Add the five servers' response-time histograms together, then compute the p99 from the combined histogram.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">What is the difference between an SLO and an SLA? Give an example SLO.</p>
+  <div class="quiz-answer">An SLO (service level objective) is a target, e.g. "p50 under 200 ms, p99 under 1 s, at least 99.9% of requests without error". An SLA (service level agreement) is a contract stating what happens if the SLO is missed, such as refunds.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

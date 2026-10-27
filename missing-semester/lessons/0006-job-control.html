@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Control and Cleanup</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 2 · Command-line environment</div>
+    <h1>Job Control and Cleanup</h1>
+    <p class="dek">Foreground, background, suspended: one shell juggles many jobs, and they all die with the terminal unless you plan for it.</p>
+  </header>
+
+  <section>
+    <h2>Jobs</h2>
+    <p>A <strong>job</strong> is a command your current shell started. Only one job owns the keyboard (the <strong>foreground</strong>); others run in the <strong>background</strong> or are <strong>suspended</strong> (paused).</p>
+    <div class="code-card"><pre>$ sleep 1000 &amp;             # &amp; = start in background, prompt returns
+[1] 18653
+$ sleep 2000               # foreground… press Ctrl-Z
+[2]+ Stopped     sleep 2000
+$ jobs                     # list this shell's jobs
+$ bg %2                    # resume job 2 in the background
+$ fg %1                    # bring job 1 to the foreground
+$ kill %2                  # %N works wherever a PID does
+$ echo $!                  # PID of the last background job</pre></div>
+    <p>Common move: you started something long and forgot <code>&amp;</code>. Press <strong>Ctrl-Z</strong> (suspend), then <strong><code>bg</code></strong>. A background job still writes to your terminal, so redirect noisy ones: <code>long-task &gt; task.log 2&gt;&amp;1 &amp;</code>.</p>
+  </section>
+
+  <section>
+    <h2>Surviving a closed terminal</h2>
+    <p>Background jobs are still children of the terminal's shell. Closing the terminal sends them <code>SIGHUP</code> and they die. <code>&amp;</code> only means "don't wait for it".</p>
+    <table>
+      <thead><tr><th>Tool</th><th>When</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>nohup cmd &amp;</code></td><td>before starting</td><td>runs <code>cmd</code> ignoring SIGHUP; output goes to <code>nohup.out</code></td></tr>
+        <tr><td><code>disown</code></td><td>job already running</td><td>removes it from the job table so the shell won't send SIGHUP</td></tr>
+        <tr><td><code>tmux</code></td><td>best option</td><td>the shell itself lives on, detached; you can reattach (see the tmux lesson)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Cleanup in scripts: <code>trap</code></h2>
+    <div class="code-card"><pre>#!/usr/bin/env bash
+set -euo pipefail
+tmpdir=$(mktemp -d)
+cleanup() { rm -rf "$tmpdir"; }
+trap cleanup EXIT   # runs when the script ends, for any reason</pre></div>
+    <p><code>trap CMD SIGNALS…</code> runs <code>CMD</code> when the script receives those signals. <code>EXIT</code> is a bash pseudo-signal for "the script is ending"; it also fires after Ctrl-C or <code>kill</code>, so you rarely trap those separately. Nothing runs on <code>SIGKILL</code>, another reason to avoid <code>kill -9</code>.</p>
+  </section>
+
+  <section>
+    <h2>Waiting for background work</h2>
+    <div class="code-card"><pre>$ sleep 5 &amp;
+$ wait            # block until all background children finish
+$ wait $!         # or just the last one
+$ kill -0 PID     # sends nothing; exit 0 if the process exists</pre></div>
+    <p><code>wait</code> only works on your own children. For an unrelated process, poll with <code>kill -0</code> (the official <code>pidwait</code> exercise).</p>
+  </section>
+
+  <section>
+    <h2>Try it</h2>
+    <ol class="steps">
+      <li><code>sleep 1000</code>, Ctrl-Z, <code>jobs</code>, <code>bg</code>, <code>jobs</code>: watch Stopped become Running.</li>
+      <li><code>pkill -f "sleep 1000"</code>, then <code>jobs</code>.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz data-qid="q1">
+      <p class="quiz-question">In bash you started <code>npm run build</code> without <code>&amp;</code> and want your prompt back without stopping the build. What do you do?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">Ctrl-Z, then <code>bg</code>.</button>
+        <button data-answer="wrong">Ctrl-C, then rerun it with <code>&amp;</code>.</button>
+        <button data-answer="wrong">Ctrl-Z, then <code>fg</code>.</button>
+        <button data-answer="wrong">Ctrl-\, then <code>jobs</code>.</button>
+      </div>
+      <div class="quiz-explanation">Ctrl-Z suspends it (SIGTSTP); <code>bg</code> resumes it in the background. <code>fg</code> would put it back in the foreground.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t1">
+      <p class="quiz-case">You run <code>python long_job.py &amp;</code> in a terminal, then close the terminal window.</p>
+      <p class="quiz-question">What happens to the job by default, and name two ways to keep it alive.</p>
+      <div class="quiz-answer">It is still a child of the terminal's shell, so it receives SIGHUP and usually dies; <code>&amp;</code> only means "don't wait". Keep it alive with <code>nohup</code> (at start), <code>disown</code> (already running), or better, run it inside tmux.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t2">
+      <p class="quiz-question">In a bash script that creates a temp directory, how do you guarantee it is deleted even if the script fails or is stopped with Ctrl-C, and when does that guarantee not hold?</p>
+      <div class="quiz-answer">Define a cleanup function and register it with <code>trap cleanup EXIT</code>; the EXIT trap runs whenever the script ends, including after errors, Ctrl-C (SIGINT) or SIGTERM. It does not run on SIGKILL (<code>kill -9</code>), which can't be caught.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

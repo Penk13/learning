@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Models, Declarative Queries and ORMs</title>
+<link rel="stylesheet" href="../assets/course.css">
+<script src="../assets/widgets.js" defer></script>
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.3 Data Models and Query Languages</p>
+  <h1>Data Models, Declarative Queries and ORMs</h1>
+  <p class="dek">The data model you pick shapes how you think about the problem, and translating between models has a cost.</p>
+</header>
+
+<section>
+<h2>Data models are stacked layers</h2>
+<p>Each layer represents its data using the layer below and hides that complexity from the layer above. Chapter 3 is about layer ②; Chapter 4 is about layer ③.</p>
+
+<figure>
+<svg viewBox="0 0 640 230" role="img" aria-label="Four stacked layers: application objects, general-purpose data model, bytes on disk or network, electrical signals. This chapter covers the second layer.">
+  <rect x="60" y="10" width="420" height="44" rx="8" class="box"/>
+  <text x="270" y="30" text-anchor="middle" font-size="14" font-weight="700">① App objects &amp; APIs</text>
+  <text x="270" y="46" text-anchor="middle" font-size="11" class="muted-t">Student, Course, Enrollment…</text>
+  <rect x="60" y="64" width="420" height="44" rx="8" fill="var(--accent)" opacity=".9"/>
+  <text x="270" y="84" text-anchor="middle" font-size="14" font-weight="700" class="white">② General-purpose data model</text>
+  <text x="270" y="100" text-anchor="middle" font-size="11" class="white">tables · documents · graph · event log · DataFrame</text>
+  <rect x="60" y="118" width="420" height="44" rx="8" class="box"/>
+  <text x="270" y="138" text-anchor="middle" font-size="14" font-weight="700">③ Bytes in memory / disk / network</text>
+  <text x="270" y="154" text-anchor="middle" font-size="11" class="muted-t">storage engines</text>
+  <rect x="60" y="172" width="420" height="44" rx="8" class="box"/>
+  <text x="270" y="198" text-anchor="middle" font-size="14" font-weight="700">④ Hardware</text>
+  <text x="500" y="92" font-size="13" font-weight="700" fill="var(--accent)">← Ch.3</text>
+  <text x="500" y="146" font-size="12" class="muted-t">← Ch.4</text>
+</svg>
+<figcaption>Clean layers let different teams, such as database vendors and app developers, work together without knowing each other's internals.</figcaption>
+</figure>
+
+<div class="callout tip"><b>Declarative query languages</b> (SQL, Cypher, SPARQL, Datalog) say <i>what</i> result you want: conditions, sorting, grouping. The <b>query optimizer</b> decides <i>how</i>: indexes, join algorithms, execution order. So the database can get faster, or run your query in parallel across cores and machines, without you changing a line. In Python or Java you write the algorithm yourself.</div>
+</section>
+
+<section>
+<h2>Relational, NoSQL and the document model</h2>
+<p>The <b>relational model</b> (Codd, 1970) stores data as <b>relations</b> (SQL tables), each an unordered collection of <b>tuples</b> (rows). By the mid-1980s it was the default; it still dominates business analytics. <b>NoSQL</b> in the 2010s brought new data models, flexible schemas, scaling and open source; <b>NewSQL</b> aimed for NoSQL-style scale with relational transactions. The lasting effect is the <b>document model</b> (usually JSON), which most relational databases now also support.</p>
+
+<h2>The object-relational mismatch</h2>
+<p>App code uses objects; relational databases use tables, rows and columns. The awkward translation is the <b>impedance mismatch</b>. <b>ORMs</b> (ActiveRecord, Hibernate, Django ORM, Entity Framework) remove boilerplate, with catches:</p>
+
+<div class="grid">
+  <div class="card"><h4>👎 Downsides</h4><p>Can't fully hide either model, so you still think in both. Analysts query the underlying tables, so schema design still matters. Auto-generated schemas can be awkward. Easy to write slow queries by accident, e.g. <b>N+1</b>.</p></div>
+  <div class="card"><h4>👍 Upsides</h4><p>Some translation is unavoidable, so less boilerplate is a win for simple, repetitive cases. Some ORMs cache results; many manage <b>schema migrations</b>.</p></div>
+</div>
+
+<p><b>N+1 queries</b>: one query fetches N records, then one extra query per record fetches related data. Fix it with a join or eager loading:</p>
+
+<div class="widget" data-widget="n-plus-one"></div>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">An ORM-backed page runs 1 query for 200 comments, then 200 more queries to load each comment's author. What is the best fix?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">Join or eager-load the authors with the comments</button>
+    <button data-answer="wrong">Add a second database replica</button>
+    <button data-answer="wrong">Cache each comment separately</button>
+    <button data-answer="wrong">Switch to a document database</button>
+  </div>
+  <div class="quiz-explanation">That's the N+1 query problem. Do the join in the database (or tell the ORM to fetch authors with the comments): 1 round trip instead of 201.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">What does a declarative query language leave to the database, and what does that let the database do?</p>
+  <div class="quiz-answer">You state what result you want; the query optimizer chooses how (indexes, join algorithms, order of execution). So the database can improve performance or parallelize the query across cores and machines without the query being rewritten.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">What is the impedance mismatch, and name two downsides of using an ORM to bridge it.</p>
+  <div class="quiz-answer">The awkward translation between application objects and relational tables, rows and columns. ORM downsides: you still have to think in both models; schema design still matters because analysts query the tables directly; generated schemas can be inefficient; and it's easy to write slow queries such as N+1.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

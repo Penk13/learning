@@ -2,10 +2,10 @@
  * localStorage and uploads them to /api/answers (D1) when a sync token is set.
  * On index pages it fills each row's score from /api/progress.
  *
- * Quiz scripts report answers with a bubbling event:
- *   quiz.dispatchEvent(new CustomEvent("quiz:answered", { bubbles: true,
- *     detail: { qid, question, answer, correct } }));
- * Every <textarea> on a lesson page gets a "Save answer" button (qid from data-qid, else t1, t2...).
+ * assets/quiz.js reports each answer with a bubbling event:
+ *   quiz:answered  detail { qid, kind: "mcq"|"text", question, answer, correct, course?, lesson? }
+ * Other scripts (e.g. assets/review.js) read the queue under QUEUE_KEY; it is the same shape
+ * as the rows POSTed to /api/answers.
  * The top-bar button [data-sx-sync] shows sync state; tapping it sets or clears the token.
  * Rows with data-progress="course/lesson" (or "course" for a course card) and data-total
  * get their .sx-score filled in; the last result is cached so it shows offline. */
@@ -146,8 +146,8 @@
     await loadProgress();
   }
 
-  /* ---------- recording (lesson and reference pages) ---------- */
-  function record({ qid, kind, question, answer, correct }) {
+  /* ---------- recording (lesson and review pages) ---------- */
+  function record({ course, lesson, qid, kind, question, answer, correct }) {
     queue.push({
       client_id: crypto.randomUUID(),
       course, lesson, qid, kind,
@@ -161,33 +161,14 @@
     flush();
   }
 
-  if (course && lesson) {
-    document.addEventListener("quiz:answered", (event) => {
-      const { qid, question, answer, correct } = event.detail || {};
-      if (!qid || !answer) return;
-      record({ qid: oneLine(qid, 100), kind: "mcq", question, answer, correct });
-    });
-
-    document.querySelectorAll("textarea").forEach((area, i) => {
-      const row = document.createElement("div");
-      row.className = "sx-save";
-      row.innerHTML = '<button type="button">Save answer</button><span aria-live="polite"></span>';
-      const [saveBtn, status] = row.children;
-      area.after(row);
-      area.addEventListener("input", () => { status.textContent = ""; });
-      saveBtn.addEventListener("click", () => {
-        if (!area.value.trim()) { status.textContent = "Write something first."; return; }
-        record({
-          qid: oneLine(area.dataset.qid, 100) || `t${i + 1}`,
-          kind: "text",
-          question: area.dataset.question || area.previousElementSibling?.textContent || area.getAttribute("aria-label"),
-          answer: area.value,
-          correct: null,
-        });
-        status.textContent = "Saved.";
-      });
-    });
-  }
+  // Cards (assets/quiz.js) carry their own course/lesson on the review page.
+  document.addEventListener("quiz:answered", (event) => {
+    const d = event.detail || {};
+    const kind = d.kind === "text" ? "text" : "mcq";
+    const card = { course: d.course || course, lesson: d.lesson || lesson, qid: oneLine(d.qid, 100) };
+    if (!card.course || !card.lesson || !card.qid || !d.answer) return;
+    record({ ...card, kind, question: d.question, answer: d.answer, correct: d.correct });
+  });
 
   window.addEventListener("online", sync);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") sync(); });

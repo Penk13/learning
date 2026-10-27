@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document vs Relational: Choosing a Model</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.3 Data Models and Query Languages</p>
+  <h1>Document vs Relational: Choosing a Model</h1>
+  <p class="dek">The shape of your relationships decides the model. And "schemaless" doesn't mean there's no schema.</p>
+</header>
+
+<section>
+<h2>Three relationship shapes</h2>
+<div class="grid">
+  <div class="card"><h4>One-to-many</h4><p>One résumé → several positions, each belonging to one résumé. A tree: fits documents.</p></div>
+  <div class="card"><h4>Many-to-one</h4><p>Many people → one region. A reference: fits normalization.</p></div>
+  <div class="card"><h4>Many-to-many</h4><p>A person worked at many orgs; an org has many employees. Needs a <b>join (associative) table</b>.</p></div>
+</div>
+
+<figure>
+<svg viewBox="0 0 640 170" role="img" aria-label="Many-to-many: users table and organizations table connected through a positions join table, where each row links one user_id to one org_id. Indexes on both columns allow querying in both directions.">
+  <rect x="10" y="50" width="150" height="70" rx="8" fill="var(--rel)" opacity=".85"/>
+  <text x="85" y="78" text-anchor="middle" font-size="13" font-weight="700" class="white">users</text>
+  <text x="85" y="98" text-anchor="middle" font-size="11" class="white">251 · 252 · 253</text>
+  <rect x="245" y="30" width="150" height="110" rx="8" class="box"/>
+  <text x="320" y="52" text-anchor="middle" font-size="13" font-weight="700">positions</text>
+  <text x="320" y="70" text-anchor="middle" font-size="10" class="muted-t">user_id · org_id · job_title</text>
+  <text x="320" y="90" text-anchor="middle" font-size="11" font-family="var(--mono)">251 · 513 · President</text>
+  <text x="320" y="106" text-anchor="middle" font-size="11" font-family="var(--mono)">251 · 514 · Senator</text>
+  <text x="320" y="122" text-anchor="middle" font-size="11" font-family="var(--mono)">252 · 513 · Advisor</text>
+  <rect x="480" y="50" width="150" height="70" rx="8" fill="var(--rel)" opacity=".85"/>
+  <text x="555" y="78" text-anchor="middle" font-size="13" font-weight="700" class="white">organizations</text>
+  <text x="555" y="98" text-anchor="middle" font-size="11" class="white">513 · 514</text>
+  <path d="M160 85 H243" class="line"/><path d="M397 85 H478" class="line"/>
+  <text x="200" y="160" text-anchor="middle" font-size="11" class="muted-t">index user_id →</text>
+  <text x="440" y="160" text-anchor="middle" font-size="11" class="muted-t">← index org_id</text>
+</svg>
+<figcaption>One row per relationship, stored <b>once</b>. Indexes on both columns answer "where did this person work?" and "who worked here?".</figcaption>
+</figure>
+<p>In a document model, the person document can hold <code>org_id</code> references in its <code>positions</code> array (many document databases can index values inside documents). Storing IDs on <i>both</i> sides is denormalized, and the two lists can disagree.</p>
+</section>
+
+<section>
+<h2>When to use which</h2>
+<div class="table-wrap">
+<table class="compare">
+  <tr><th></th><th>📄 Document</th><th>🗃 Relational</th></tr>
+  <tr><td><b>Best for</b></td><td>Trees of one-to-many, loaded whole (a profile, an order with its items)</td><td>Many-to-one and many-to-many; data joined and queried many ways</td></tr>
+  <tr><td><b>Strengths</b></td><td>Schema flexibility · locality · closer to app objects · ordered lists are easy</td><td>Joins · refer to any row by ID · enforced schema</td></tr>
+  <tr><td><b>Weak spots</b></td><td>Can't point at a nested item directly · whole document loaded and rewritten</td><td><b>Shredding</b> a tree into many tables · reorderable lists need tricks</td></tr>
+</table>
+</div>
+</section>
+
+<section>
+<h2>Schema-on-read vs schema-on-write</h2>
+<p>"Schemaless" is misleading: the code that reads the data still assumes a structure. It's just <i>implicit</i>.</p>
+<div class="grid">
+  <div class="card sca"><h4 class="c-sca">Schema-on-read</h4><p>Structure interpreted when read, like <b>dynamic typing</b>. Document DBs, JSON columns. Every reader must handle old formats forever:</p>
+<pre><code>if (user &amp;&amp; user.name &amp;&amp; !user.first_name) {
+  user.first_name = user.name.split(" ")[0];
+}</code></pre></div>
+  <div class="card rel"><h4 class="c-rel">Schema-on-write</h4><p>Database enforces structure on every write, like <b>static typing</b>. Relational tables.</p>
+<pre><code>ALTER TABLE users ADD COLUMN first_name text;
+UPDATE users SET first_name = split_part(name, ' ', 1);</code></pre>
+<p>ADD COLUMN is fast; the UPDATE rewrites every row, slow on big tables.</p></div>
+</div>
+<p>Schema-on-read wins when data is <b>heterogeneous</b> (many object types, or structure dictated by external systems that change anytime). When all records share a structure, a schema documents and enforces it. No clear winner, just like static vs dynamic typing.</p>
+</section>
+
+<section>
+<h2>Locality and convergence</h2>
+<ul>
+  <li>A document is stored as one contiguous string (JSON, BSON). Great if you need most of it; wasteful if you need a small part, and any update rewrites the whole document. <b>Keep documents small.</b></li>
+  <li>Locality isn't document-only: Spanner's interleaved tables and Bigtable's column families do the same.</li>
+  <li><b>The models are converging.</b> Relational databases added JSON types and indexes inside documents; document databases (MongoDB, Couchbase) added joins, secondary indexes and declarative queries such as MongoDB's aggregation pipeline.</li>
+</ul>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">"Schemaless" document databases are more accurately described as…</p>
+  <div class="quiz-options">
+    <button data-answer="correct">Schema-on-read: the schema is implicit</button>
+    <button data-answer="wrong">Schema-on-write: the schema is enforced</button>
+    <button data-answer="wrong">Having no structure at all</button>
+    <button data-answer="wrong">Using compile-time type checks</button>
+  </div>
+  <div class="quiz-explanation">Code reading the data still assumes a structure; the database just doesn't enforce it. Like dynamic typing, versus schema-on-write ≈ static typing.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Name the three relationship shapes (one-to-many, many-to-one, many-to-many) with an example each, and the data model each fits best.</p>
+  <div class="quiz-answer">One-to-many: a résumé and its positions; a tree, fits documents. Many-to-one: many people in one region; a reference by ID, fits normalized relational data. Many-to-many: people and the organizations they worked at; needs a join table, fits relational (or graph).</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-case">A student profile with addresses, emergency contacts and study history is always loaded whole on one page.</p>
+  <p class="quiz-question">Which data model fits most naturally, and why?</p>
+  <div class="quiz-answer">A document (JSON tree). It's a tree of one-to-few relationships loaded at once, so one read fetches it all (locality) with no shredding into many tables or multiway joins.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">Why should documents in a document database be kept small?</p>
+  <div class="quiz-answer">A document is stored as one contiguous string: reading a small part still loads the whole thing, and updating any field typically rewrites the whole document. Large documents waste I/O on partial reads and frequent small updates.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

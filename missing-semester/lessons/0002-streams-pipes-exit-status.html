@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streams, Pipes and Exit Status</title>
+<link rel="stylesheet" href="../assets/styles.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+  <header class="lesson-header">
+    <div class="eyebrow">The Missing Semester · Topic 1 · The shell</div>
+    <h1>Streams, Pipes and Exit Status</h1>
+    <p class="dek">Programs talk through three streams and report back one number; the shell lets you rewire both.</p>
+  </header>
+
+  <section>
+    <h2>Three streams</h2>
+    <p>Every program has <strong>stdin</strong> (0, input), <strong>stdout</strong> (1, normal output) and <strong>stderr</strong> (2, errors). By default all three are connected to your terminal. Redirection reconnects them to files:</p>
+    <div class="code-card"><pre>$ date &gt; now.txt              # stdout → file (overwrite)
+$ date &gt;&gt; log.txt             # stdout → file (append)
+$ grep hi &lt; notes.md          # stdin ← file
+$ ls /nope 2&gt; err.txt         # stderr → file
+$ cmd &gt; all.txt 2&gt;&amp;1          # both streams → same file
+$ cmd 2&gt; /dev/null            # throw errors away</pre></div>
+    <p>Errors go to stderr precisely so they still reach you when stdout is redirected or piped.</p>
+  </section>
+
+  <section>
+    <h2>Pipes compose programs</h2>
+    <p>A pipe <code>|</code> connects stdout of the left program to stdin of the right one:</p>
+    <div class="code-card"><pre>$ grep TODO notes.md | wc -l
+2</pre></div>
+    <p><code>grep</code> keeps only the lines containing <code>TODO</code>; <code>wc -l</code> counts the lines it receives. Two small programs, one task: <em>find</em> then <em>count</em>. That composition is the point of the shell.</p>
+    <p><code>tee</code> splits a stream: <code>python manage.py migrate | tee deploy.log</code> shows the output <em>and</em> saves it.</p>
+  </section>
+
+  <section>
+    <h2>Exit status</h2>
+    <p>Every program exits with a number: <code>0</code> = success, anything else = failure. <code>$?</code> holds the last command's status.</p>
+    <div class="code-card"><pre>$ ls /nope; echo $?     # 2 — failed
+$ true  &amp;&amp; echo yes     # yes  (&amp;&amp; runs only after success)
+$ false || echo no      # no   (|| runs only after failure)
+$ false &amp;&amp; echo yes     # (nothing — false failed)
+$ cmd1 ; cmd2           # ; runs cmd2 regardless</pre></div>
+    <table>
+      <thead><tr><th>Operator</th><th>Right side runs when left…</th></tr></thead>
+      <tbody>
+        <tr><td><code>&amp;&amp;</code></td><td>succeeded (status 0)</td></tr>
+        <tr><td><code>||</code></td><td>failed (non-zero)</td></tr>
+        <tr><td><code>;</code></td><td>always</td></tr>
+      </tbody>
+    </table>
+    <p><code>npm test &amp;&amp; npm run build</code> builds only if the tests passed. CI works the same way: a step fails only because some command exited non-zero.</p>
+  </section>
+
+  <section>
+    <h2>Quoting and globs</h2>
+    <p>The shell rewrites your line <em>before</em> the program sees it:</p>
+    <div class="code-card"><pre>$ echo '$PATH'          # $PATH          (single quotes: literal)
+$ echo "$PATH"          # /usr/local/... (double quotes: variables expand)
+$ ls *.txt              # glob: any characters
+$ ls file?.txt          # exactly one character
+$ ls {a,b,c}.txt        # brace expansion: a.txt b.txt c.txt</pre></div>
+    <p>The program receives the already-expanded file names; <code>ls</code> never sees the <code>*</code>.</p>
+  </section>
+
+  <section>
+    <h2>Try it</h2>
+    <ol class="steps">
+      <li><code>ls /nonexistent /tmp &gt; out.txt 2&gt; err.txt</code>, then <code>cat</code> both files.</li>
+      <li><code>false &amp;&amp; echo yes; false || echo no</code>: predict first, then run.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Check yourself</h2>
+
+    <div class="quiz" data-quiz data-qid="t1">
+      <p class="quiz-case"><code>notes.md</code> contains exactly two lines that include the word <code>TODO</code>.</p>
+      <p class="quiz-question">What does <code>grep TODO notes.md | wc -l</code> print, and what does each part do?</p>
+      <div class="quiz-answer">It prints <code>2</code>. <code>grep</code> writes the two matching lines to its stdout; the pipe feeds them into <code>wc</code>'s stdin; <code>wc -l</code> counts lines.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="t2">
+      <p class="quiz-question">In bash, what does <code>false &amp;&amp; echo yes; false || echo no</code> print, and why?</p>
+      <div class="quiz-answer">Only <code>no</code>. <code>false</code> exits non-zero (failure). <code>&amp;&amp;</code> runs its right side only after success, so <code>echo yes</code> is skipped; <code>||</code> runs its right side only after failure, so <code>echo no</code> runs. <code>;</code> just separates the two commands.</div>
+    </div>
+
+    <div class="quiz" data-quiz data-qid="q1">
+      <p class="quiz-question">You run <code>./deploy.sh &gt; out.log</code> and still see an error message on the terminal. Why?</p>
+      <div class="quiz-options">
+        <button data-answer="correct">The error was written to stderr, and only stdout was redirected.</button>
+        <button data-answer="wrong">The <code>&gt;</code> redirect failed because out.log already existed.</button>
+        <button data-answer="wrong">Errors always bypass every redirection.</button>
+        <button data-answer="wrong">The terminal echoes the log file while it is being written.</button>
+      </div>
+      <div class="quiz-explanation"><code>&gt;</code> only redirects stream 1. Add <code>2&gt;&amp;1</code> (after the <code>&gt; out.log</code>) to send stderr to the same file, or <code>2&gt; err.log</code> to split them.</div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

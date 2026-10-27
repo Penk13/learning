@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Operational vs Analytical Systems</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.1 Trade-Offs in Data Systems Architecture</p>
+  <h1>Operational vs Analytical Systems</h1>
+  <p class="dek">The same data gets used in two very different ways. Many arguments about databases start from mixing them up.</p>
+</header>
+
+<section>
+<p>An app is <b>data-intensive</b> when managing data is a primary challenge: big volumes, data that keeps changing, staying consistent through failures and concurrency, staying available. (<b>Compute-intensive</b> = the hard part is a huge calculation.) Nobody builds this from scratch: application code glues standard building blocks together.</p>
+
+<figure>
+<svg viewBox="0 0 640 320" role="img" aria-label="Client calls a backend; the backend glues together a database, cache, search index, stream processor and batch processor">
+  <rect x="150" y="10" width="480" height="300" rx="16" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="7 6"/>
+  <text x="615" y="32" text-anchor="end" font-size="13" font-weight="700" fill="var(--accent)">backend + data infrastructure</text>
+  <rect x="10" y="135" width="100" height="50" rx="10" class="box"/>
+  <text x="60" y="165" text-anchor="middle" font-size="14">👤 Frontend</text>
+  <path d="M110 160 H170" class="line" marker-end="url(#ar)"/>
+  <rect x="172" y="120" width="130" height="80" rx="10" fill="var(--accent)"/>
+  <text x="237" y="155" text-anchor="middle" font-size="14" font-weight="700" class="white">Application</text>
+  <text x="237" y="175" text-anchor="middle" font-size="11" class="white">stateless glue</text>
+  <path d="M302 140 L380 80" class="line" marker-end="url(#ar)"/>
+  <path d="M302 160 H380" class="line" marker-end="url(#ar)"/>
+  <path d="M302 180 L380 240" class="line" marker-end="url(#ar)"/>
+  <rect x="382" y="58" width="140" height="44" rx="10" class="box"/>
+  <text x="452" y="85" text-anchor="middle" font-size="13" font-weight="700">⚡ Cache</text>
+  <rect x="382" y="138" width="140" height="44" rx="10" class="box"/>
+  <text x="452" y="165" text-anchor="middle" font-size="13" font-weight="700">🗄 Database</text>
+  <rect x="382" y="218" width="140" height="44" rx="10" class="box"/>
+  <text x="452" y="245" text-anchor="middle" font-size="13" font-weight="700">🔎 Search index</text>
+  <rect x="540" y="98" width="80" height="54" rx="10" class="box2"/>
+  <text x="580" y="130" text-anchor="middle" font-size="12" font-weight="700">🌊 Stream</text>
+  <rect x="540" y="172" width="80" height="54" rx="10" class="box2"/>
+  <text x="580" y="204" text-anchor="middle" font-size="12" font-weight="700">📦 Batch</text>
+  <path d="M522 160 H538" class="line"/>
+  <path d="M452 102 V136" stroke="var(--bad)" stroke-width="1.6" stroke-dasharray="4 3" fill="none"/>
+  <path d="M452 182 V216" stroke="var(--bad)" stroke-width="1.6" stroke-dasharray="4 3" fill="none"/>
+  <text x="400" y="290" font-size="11" fill="var(--bad)">red dashes = keep in sync: whose job?</text>
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>
+</svg>
+<figcaption>Stateless app code forgets each request; anything that must persist lives in the data infrastructure. The job is choosing and combining the right blocks.</figcaption>
+</figure>
+
+<p class="big-idea">No approach is fundamentally better; everything has pros and cons. The skill is asking the right questions to compare them.</p>
+</section>
+
+<section>
+<h2>Two ways to use the same data</h2>
+
+<div class="grid">
+  <div class="card rel"><h4 class="c-rel">🛠 Operational (OLTP)</h4><p>Backend services where data is <b>created</b>. App code reads <i>and modifies</i> data based on user actions. Built by backend engineers.</p></div>
+  <div class="card sca"><h4 class="c-sca">📊 Analytical (OLAP)</h4><p>A <b>read-only copy</b> of operational data, optimized for analysis. Used by business analysts (BI reports) and data scientists.</p></div>
+  <div class="card mai"><h4 class="c-mai">🔗 Bridge roles</h4><p><b>Data engineers</b> integrate both sides and own the data infrastructure. <b>Analytics engineers</b> model and transform data for analysts.</p></div>
+</div>
+
+<div class="table-wrap">
+<table class="compare">
+  <tr><th>Property</th><th>Operational (OLTP)</th><th>Analytical (OLAP)</th></tr>
+  <tr><td>Main read</td><td><b>Point query</b>: a few records by key</td><td><b>Aggregate</b> (count/sum/avg) over many records</td></tr>
+  <tr><td>Main write</td><td>Create/update/delete single records</td><td>Bulk import (ETL) or event stream</td></tr>
+  <tr><td>Users</td><td>End users of the app</td><td>Internal analysts, decision support</td></tr>
+  <tr><td>Queries</td><td>Fixed, baked into app code</td><td>Arbitrary, ad hoc</td></tr>
+  <tr><td>Data represents</td><td>Latest state (now)</td><td>History of events</td></tr>
+  <tr><td>Size</td><td>GB → TB</td><td>TB → PB</td></tr>
+</table>
+</div>
+
+<p>OLTP users can't write custom SQL (security and performance); analysts can, or use dashboards. A hybrid exists: <b>product / real-time analytics</b> (Pinot, Druid, ClickHouse) runs aggregate queries, but with low latency, inside a user-facing product.</p>
+
+<div class="callout tip"><b>Example.</b> "Show this student's class schedule" is OLTP: one key, latest state, an end user. "Total registrations per faculty this semester" is OLAP: an aggregate over many records, for a decision-maker.</div>
+</section>
+
+<section>
+<h2>Why not run analytics on the OLTP database?</h2>
+<p>SQL works for both, and early on the same database did both. Since the late 1980s, analytics moved to a separate <b>data warehouse</b>, for four reasons:</p>
+<div class="grid">
+  <div class="card"><h4>🏝 Data silos</h4><p>Data is spread over dozens or hundreds of OLTP systems, hard to combine in one query.</p></div>
+  <div class="card"><h4>📐 Wrong layout</h4><p>Schemas and storage good for OLTP are poor for analytics.</p></div>
+  <div class="card"><h4>🐢 Hurts users</h4><p>Expensive analytic queries slow the app for everyone.</p></div>
+  <div class="card"><h4>🔒 Access rules</h4><p>OLTP may sit in a network analysts can't reach, for security or compliance.</p></div>
+</div>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">"Fetch this student's current grades by student ID." Which access pattern is this?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">Operational point query by key</button>
+    <button data-answer="wrong">Analytical aggregate over history</button>
+    <button data-answer="wrong">Bulk import into a warehouse</button>
+    <button data-answer="wrong">Ad hoc exploration by analysts</button>
+  </div>
+  <div class="quiz-explanation">A few records, looked up by key, latest state, for an end user: an OLTP point query.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Name four differences between operational (OLTP) and analytical (OLAP) systems.</p>
+  <div class="quiz-answer">Reads: point queries by key vs aggregates over many records. Writes: single-record CRUD vs bulk ETL or streams. Queries: fixed in app code vs ad hoc. Data: latest state vs history of events. Also users (end users vs analysts) and size (GB–TB vs TB–PB).</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-case">A dashboard counts helpdesk tickets per category per month. A separate screen shows one ticket's current status to the person who filed it.</p>
+  <p class="quiz-question">Which part is operational and which is analytical, and why?</p>
+  <div class="quiz-answer">The ticket-status screen is operational: a point lookup by key, latest state, for an end user. The monthly counts are analytical: an aggregate over many records and over time, for decision support.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">SQL works fine on operational databases. So why do organizations copy data into a separate data warehouse for analytics? Give the four reasons.</p>
+  <div class="quiz-answer">Data silos: data is spread across many OLTP systems and can't be combined in one query. Wrong layout: schemas good for OLTP are poor for analytics. Performance: expensive analytic queries would slow the app for users. Access: OLTP systems may sit in networks analysts can't reach, for security or compliance.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

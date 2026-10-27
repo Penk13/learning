@@ -193,9 +193,20 @@ section { margin: 2.2rem 0; }
 .quiz.answered .quiz-status { color: var(--ink); }
 .quiz-explanation { display: none; margin-top: .7rem; padding-top: .7rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .94rem; }
 .quiz.answered .quiz-explanation { display: block; }
-.quiz-feedback { margin: .9rem 0 0; padding: 10px 12px; border-radius: 10px; font-size: .92rem; }
-.quiz-feedback.is-correct { color: var(--good); background: var(--good-soft); }
-.quiz-feedback.is-wrong { color: var(--bad); background: var(--bad-soft); }
+/* free-text and case-study cards: assets/quiz.js adds .quiz-write; .quiz-answer is the model answer */
+.quiz-case { margin: .2rem 0 .6rem; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); font-size: .95rem; }
+.quiz-write { display: grid; gap: 8px; }
+.quiz-write textarea { min-height: 110px; }
+.quiz-write textarea:read-only { color: var(--muted); }
+.quiz-write button, .rv-next {
+  justify-self: start; min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--accent); cursor: pointer;
+  background: var(--accent); color: var(--on-accent, #fff); font: inherit; font-weight: 650;
+}
+.quiz-write button:disabled { opacity: .5; cursor: default; }
+.quiz-answer { display: none; margin-top: .7rem; padding: 10px 12px; border-radius: 10px; background: var(--good-soft); font-size: .94rem; }
+.quiz-answer::before { content: "Model answer"; display: block; font-size: .72rem; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--good); margin-bottom: .2rem; }
+.quiz-answer > :last-child { margin-bottom: 0; }
+.quiz.answered .quiz-answer { display: block; }
 
 /* in-page navs written by hand in lessons */
 .lesson-nav, .footer-nav, .pager {
@@ -236,12 +247,6 @@ section { margin: 2.2rem 0; }
 .sx-sync[data-state="ok"]::after { background: var(--good); }
 .sx-sync[data-state="pending"]::after { background: var(--accent); }
 .sx-sync[data-state="error"]::after { background: var(--bad); }
-.sx-save { display: flex; align-items: center; gap: 12px; margin: 8px 0 12px; font-size: .9rem; }
-.sx-save button {
-  min-height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--accent); cursor: pointer;
-  background: var(--accent); color: var(--on-accent, #fff); font: inherit; font-weight: 650;
-}
-.sx-save span { color: var(--muted); }
 /* synced progress on index rows, filled by progress.js */
 .sx-score { flex: none; margin-left: auto; font: 650 .78rem var(--sans); color: var(--muted); white-space: nowrap; }
 .sx-score + .sx-chev { margin-left: 0; }
@@ -296,6 +301,30 @@ section { margin: 2.2rem 0; }
   font: 700 .85rem var(--sans); color: var(--accent-ink); background: var(--accent-soft);
 }
 .sx-lesson b { font-weight: 600; font-size: .98rem; line-height: 1.35; }
+.sx-label { display: flex; flex-direction: column; min-width: 0; }
+.sx-time, .sx-label small { font-size: .78rem; color: var(--muted); }
+
+/* review entry on the home page; review.js fills [data-review-due] */
+.sx-review {
+  display: flex; align-items: center; gap: 14px; min-height: 64px; padding: 12px 14px; text-decoration: none; color: var(--ink);
+  background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 14px;
+}
+.sx-review:hover { color: var(--ink); }
+.sx-review .sx-num { background: var(--accent); color: var(--on-accent, #fff); }
+.sx-review b { font-size: 1.02rem; }
+.sx-review[data-due] small { color: var(--accent-ink); font-weight: 650; }
+.sx-review .sx-chev { margin-left: auto; flex: none; width: 18px; height: 18px; }
+
+/* review page (assets/review.js) */
+.rv-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 8px 0 4px; font-size: .85rem; color: var(--muted); }
+.rv-bar { height: 4px; border-radius: 4px; background: var(--surface-2); overflow: hidden; margin-bottom: 8px; }
+.rv-bar span { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+.rv-from { font-size: .8rem; color: var(--muted); margin: 0 0 .2rem; }
+.rv-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.rv-actions[hidden] { display: none; }
+.rv-actions a { font-size: .9rem; }
+.rv-done { text-align: center; padding: 32px 0; }
+.rv-done h2 { margin-top: 0; }
 .sx-lesson .sx-chev { margin-left: auto; flex: none; color: var(--muted); width: 18px; height: 18px; }
 
 .sx-chips { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graph Data Models</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.3 Data Models and Query Languages</p>
+  <h1>Graph Data Models</h1>
+  <p class="dek">When anything can relate to anything, model it as vertices and edges, and query it with a language built for traversal.</p>
+</header>
+
+<section>
+<p>Mostly one-to-many: documents. Some many-to-many: relational. <b>Anything potentially related to everything</b>: a graph of <b>vertices</b> (entities) and <b>edges</b> (relationships). Examples: social graphs, the web graph, road networks. One graph can also hold <i>many kinds</i> of things, like a search engine's <b>knowledge graph</b>.</p>
+
+<figure>
+<svg viewBox="0 0 640 250" role="img" aria-label="Property graph example: Lucy was born in Idaho, which is within the United States, within North America. Lucy and Alain are married and live in London, which is within the United Kingdom, within Europe. Alain was born in Saint-Lô, within France, within Europe.">
+  <defs><marker id="g1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker></defs>
+  <g font-size="11">
+    <rect x="10" y="10" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="65" y="29" text-anchor="middle" class="white">North America</text>
+    <rect x="10" y="80" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="65" y="99" text-anchor="middle" class="white">United States</text>
+    <rect x="10" y="150" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="65" y="169" text-anchor="middle" class="white">Idaho</text>
+    <rect x="265" y="10" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="320" y="29" text-anchor="middle" class="white">Europe</text>
+    <rect x="200" y="80" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="255" y="99" text-anchor="middle" class="white">United Kingdom</text>
+    <rect x="200" y="150" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="255" y="169" text-anchor="middle" class="white">London</text>
+    <rect x="490" y="80" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="545" y="99" text-anchor="middle" class="white">France</text>
+    <rect x="490" y="150" width="110" height="28" rx="14" fill="var(--mai)" opacity=".85"/><text x="545" y="169" text-anchor="middle" class="white">Saint-Lô</text>
+    <rect x="80" y="212" width="90" height="30" rx="6" fill="var(--accent)"/><text x="125" y="232" text-anchor="middle" class="white" font-weight="700">👤 Lucy</text>
+    <rect x="420" y="212" width="90" height="30" rx="6" fill="var(--accent)"/><text x="465" y="232" text-anchor="middle" class="white" font-weight="700">👤 Alain</text>
+  </g>
+  <g class="line" marker-end="url(#g1)">
+    <path d="M65 80 V40"/><path d="M65 150 V110"/>
+    <path d="M255 80 L305 40"/><path d="M255 150 V110"/>
+    <path d="M545 80 L380 30"/><path d="M545 150 V110"/>
+    <path d="M110 212 L80 180"/>
+    <path d="M150 212 L215 180"/>
+    <path d="M440 212 L300 180"/>
+    <path d="M490 212 L530 180"/>
+    <path d="M170 236 H418"/>
+  </g>
+  <g font-size="9" class="muted-t">
+    <text x="70" y="62">WITHIN</text><text x="70" y="132">WITHIN</text>
+    <text x="285" y="62">WITHIN</text><text x="260" y="132">WITHIN</text>
+    <text x="440" y="50">WITHIN</text><text x="550" y="132">WITHIN</text>
+    <text x="40" y="200">BORN_IN</text><text x="180" y="200">LIVES_IN</text>
+    <text x="330" y="200">LIVES_IN</text><text x="520" y="200">BORN_IN</text>
+    <text x="294" y="231" text-anchor="middle">MARRIED</text>
+  </g>
+</svg>
+<figcaption>Awkward for a fixed relational schema: different region structures per country, varying granularity (born in a <i>state</i>, lives in a <i>city</i>). Graphs are easy to extend: <b>good for evolvability</b>.</figcaption>
+</figure>
+</section>
+
+<section>
+<h2>Property graphs (Neo4j, Memgraph, KùzuDB)</h2>
+<ul>
+  <li><b>Vertex</b>: ID, label (type), outgoing and incoming edges, properties (key-value).</li>
+  <li><b>Edge</b>: ID, <b>tail</b> vertex (start), <b>head</b> vertex (end), label (relationship kind), properties.</li>
+</ul>
+<p>You can store it as two relational tables, <code>vertices</code> and <code>edges</code>, indexed on <code>tail_vertex</code> and <code>head_vertex</code> to traverse both ways. The edges table is a <b>generalized join table</b>. Limitation: an edge links only <i>two</i> vertices.</p>
+
+<h2>Four lines vs thirty-one</h2>
+<p>Query: <i>people who emigrated from the US to Europe.</i> A BORN_IN edge may point at a city, a state or a country, so you follow <b>WITHIN</b> edges a <i>variable</i> number of times.</p>
+<pre><code>MATCH
+ (person) -[:BORN_IN]-&gt;  () -[:WITHIN*0..]-&gt; (:Location {name:'United States'}),
+ (person) -[:LIVES_IN]-&gt; () -[:WITHIN*0..]-&gt; (:Location {name:'Europe'})
+RETURN person.name</code></pre>
+<p>In Cypher, <code>*0..</code> means "zero or more times", like <code>*</code> in a regex. In SQL, each hop is a join and the number of joins isn't known in advance, so you need a <code>WITH RECURSIVE</code> common table expression: about 31 lines. The <b>right model and query language make a huge difference</b>. <b>GQL</b>, an ISO standard based on Cypher, was published in 2024.</p>
+</section>
+
+<section>
+<h2>Triple stores, Datalog, GraphQL</h2>
+<ul>
+  <li><b>Triple store + SPARQL</b>: everything is <b>(subject, predicate, object)</b>. <code>(lucy, marriedTo, alain)</code> is an edge; <code>(lucy, birthYear, 1989)</code> is a property. Mostly equivalent to property graphs; comes from <b>RDF</b> and the Semantic Web. SPARQL predates Cypher, which borrowed its pattern matching.</li>
+  <li><b>Datalog</b>: an older relational language (a subset of Prolog) that's great at recursion. Data = <b>facts</b>; queries = <b>rules</b> that derive virtual tables. A rule that calls itself traverses a graph.</li>
+  <li><b>GraphQL</b>: not a graph-database language. It lets <b>OLTP clients</b> ask for exactly the JSON shape a UI needs, on top of <i>any</i> database. Queries come from <b>untrusted</b> clients, so it deliberately allows <b>no recursion and no arbitrary search</b>: a client must not be able to send a query expensive enough to take the server down.</li>
+</ul>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">Why is "find people born in the US who now live in Europe" clumsy in plain SQL over a graph of locations?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">The number of joins isn't known in advance</button>
+    <button data-answer="wrong">SQL cannot join a table to itself</button>
+    <button data-answer="wrong">SQL cannot store vertices or edges</button>
+    <button data-answer="wrong">SQL forbids looking up JSON properties</button>
+  </div>
+  <div class="quiz-explanation">Each WITHIN hop is a join, and locations nest to varying depth. SQL needs WITH RECURSIVE (about 31 lines vs 4 in Cypher).</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Why does GraphQL deliberately forbid recursive queries and arbitrary search conditions, while Cypher allows them?</p>
+  <div class="quiz-answer">GraphQL queries come from untrusted clients (mobile and web apps), and a recursive or arbitrary search could be expensive enough to cause a denial of service. Cypher is a full query language for trusted users of a graph database.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">What does a property graph store for each vertex and each edge, and how can it be stored in a relational database?</p>
+  <div class="quiz-answer">Vertex: ID, label, incoming and outgoing edges, properties. Edge: ID, tail (start) vertex, head (end) vertex, label, properties. Relationally: a vertices table and an edges table, with indexes on tail_vertex and head_vertex so traversal works in both directions; the edges table is a generalized join table.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">In a triple store, how are "Lucy is married to Alain" and "Lucy was born in 1989" each represented?</p>
+  <div class="quiz-answer">Both as (subject, predicate, object) triples: (lucy, marriedTo, alain), where the object is another vertex so it acts as an edge, and (lucy, birthYear, 1989), where the object is a value so it acts as a property.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>

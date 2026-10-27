@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scalability</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<div class="lesson-shell">
+
+<header class="lesson-header">
+  <p class="eyebrow">DDIA · Ch.2 Defining Nonfunctional Requirements</p>
+  <h1>Scalability</h1>
+  <p class="dek">"Is it scalable?" is the wrong question. Describe the load, then ask what your options are as it grows.</p>
+</header>
+
+<section>
+<p class="big-idea">Never say "X scales" or "Y doesn't scale". Ask: <b>"If the system grows <i>in this particular way</i>, what are our options, and when do we hit the limits?"</b></p>
+
+<p>For a small new product, keep it simple and flexible. Worrying about hypothetical scale is premature optimization and can lock you into an inflexible design. Learn where the real bottlenecks are first.</p>
+
+<h2>Step 1 · Describe the load</h2>
+<p>Usually throughput (requests/s, GB/day, checkouts/hour), sometimes a peak (simultaneous online users). Plus statistics that shape access patterns: read:write ratio, cache hit rate, items per user (followers!). Sometimes averages matter; sometimes a few extreme cases dominate. Then ask:</p>
+<ol>
+  <li>Load grows and resources stay fixed: what happens to performance?</li>
+  <li>Load grows: how many more resources keep performance the same?</li>
+</ol>
+<p>Doubling resources to handle double the load is <b>linear scalability</b> (good). Usually cost grows <i>faster</i> than linearly.</p>
+</section>
+
+<section>
+<h2>Step 2 · Pick an architecture</h2>
+<figure>
+<svg viewBox="0 0 640 210" role="img" aria-label="Three architectures: shared-memory is one big machine; shared-disk is several machines sharing a disk array over a network; shared-nothing is several machines each with their own CPU, RAM and disk">
+  <text x="105" y="18" text-anchor="middle" font-size="13" font-weight="700">Shared-memory</text>
+  <text x="105" y="34" text-anchor="middle" font-size="11" class="muted-t">scale UP (vertical)</text>
+  <rect x="55" y="48" width="100" height="110" rx="10" fill="var(--sca)" opacity=".85"/>
+  <text x="105" y="100" text-anchor="middle" font-size="13" font-weight="700" class="white">1 BIG box</text>
+  <text x="105" y="118" text-anchor="middle" font-size="10" class="white">many cores, 1 RAM</text>
+  <text x="105" y="180" text-anchor="middle" font-size="11" class="muted-t">cost grows faster</text>
+  <text x="105" y="195" text-anchor="middle" font-size="11" class="muted-t">than linear</text>
+  <line x1="215" y1="10" x2="215" y2="200" stroke="var(--rule)"/>
+  <text x="320" y="18" text-anchor="middle" font-size="13" font-weight="700">Shared-disk</text>
+  <text x="320" y="34" text-anchor="middle" font-size="11" class="muted-t">NAS / SAN</text>
+  <g fill="var(--card-2)" stroke="var(--rule)">
+    <rect x="245" y="50" width="44" height="40" rx="6"/><rect x="298" y="50" width="44" height="40" rx="6"/><rect x="351" y="50" width="44" height="40" rx="6"/>
+  </g>
+  <text x="320" y="74" text-anchor="middle" font-size="10">CPU+RAM ×3</text>
+  <path d="M267 90 L320 120 M320 90 V120 M373 90 L320 120" class="line"/>
+  <rect x="270" y="120" width="100" height="38" rx="8" fill="var(--rel)" opacity=".8"/>
+  <text x="320" y="144" text-anchor="middle" font-size="11" class="white">shared disk array</text>
+  <text x="320" y="180" text-anchor="middle" font-size="11" class="muted-t">locking &amp; contention</text>
+  <text x="320" y="195" text-anchor="middle" font-size="11" class="muted-t">limit scaling</text>
+  <line x1="425" y1="10" x2="425" y2="200" stroke="var(--rule)"/>
+  <text x="535" y="18" text-anchor="middle" font-size="13" font-weight="700">Shared-nothing</text>
+  <text x="535" y="34" text-anchor="middle" font-size="11" class="muted-t">scale OUT (horizontal)</text>
+  <g>
+    <rect x="445" y="60" width="52" height="98" rx="6" fill="var(--rel)" opacity=".85"/>
+    <rect x="509" y="60" width="52" height="98" rx="6" fill="var(--rel)" opacity=".85"/>
+    <rect x="573" y="60" width="52" height="98" rx="6" fill="var(--rel)" opacity=".85"/>
+  </g>
+  <text x="471" y="112" text-anchor="middle" font-size="9" class="white">own disk</text>
+  <text x="535" y="112" text-anchor="middle" font-size="9" class="white">own disk</text>
+  <text x="599" y="112" text-anchor="middle" font-size="9" class="white">own disk</text>
+  <text x="535" y="180" text-anchor="middle" font-size="11" class="muted-t">can scale linearly; needs</text>
+  <text x="535" y="195" text-anchor="middle" font-size="11" class="muted-t">sharding + distributed complexity</text>
+</svg>
+<figcaption>Shared-nothing: potentially linear scaling, best price/performance hardware, easy to grow or shrink, fault tolerance across datacenters; but explicit sharding and all the problems of distributed systems. Cloud-native databases that separate storage and compute look a bit like shared-disk, but use a purpose-built storage API instead of NAS/SAN, avoiding the old limits.</figcaption>
+</figure>
+</section>
+
+<section>
+<h2>Step 3 · Principles</h2>
+<ul>
+  <li>No "magic scaling sauce". 100k requests/s of 1 kB each looks nothing like 3 requests/min of 2 GB each, despite the same 100 MB/s.</li>
+  <li>Expect to <b>rethink the architecture at every order-of-magnitude</b> increase in load; don't plan more than ~10× ahead.</li>
+  <li><b>Break the system into parts that operate largely independently</b>: the idea behind microservices, sharding, stream processing and shared-nothing. The hard part is where to draw the lines.</li>
+  <li><b>Don't over-complicate.</b> A single-machine database that does the job beats a distributed setup. Autoscaling is neat, but predictable load may be calmer with manual scaling. 5 services are simpler than 50.</li>
+</ul>
+</section>
+
+<section>
+<div class="quiz" data-quiz data-qid="q1">
+  <p class="quiz-question">Several machines, each with its own CPU and RAM, share one disk array over a SAN. Which architecture is this?</p>
+  <div class="quiz-options">
+    <button data-answer="correct">Shared-disk</button>
+    <button data-answer="wrong">Shared-memory</button>
+    <button data-answer="wrong">Shared-nothing</button>
+    <button data-answer="wrong">Serverless</button>
+  </div>
+  <div class="quiz-explanation">Independent compute with common storage over a fast network (NAS/SAN) is shared-disk. Locking and contention limit how far it scales.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t1">
+  <p class="quiz-question">Why does DDIA call "Is this system scalable?" the wrong question, and what should you ask instead?</p>
+  <div class="quiz-answer">Scalability isn't a yes/no label. Ask: if the load grows in this particular way, what options do we have to cope, and when do we hit the limits? That requires first describing the load with concrete numbers.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t2">
+  <p class="quiz-question">Once you've described a system's load, which two questions does DDIA say to ask as it grows? What is linear scalability?</p>
+  <div class="quiz-answer">(1) If load grows and resources stay the same, how does performance change? (2) If load grows, how much must resources grow to keep performance unchanged? Linear scalability: doubling resources handles double the load at the same performance.</div>
+</div>
+
+<div class="quiz" data-quiz data-qid="t3">
+  <p class="quiz-question">Give the main advantages and the main costs of a shared-nothing (scale-out) architecture.</p>
+  <div class="quiz-answer">Advantages: can scale linearly, uses the best price/performance hardware, easy to grow or shrink, fault tolerance across machines or datacenters. Costs: data must be explicitly sharded, and you take on all the complexity of distributed systems.</div>
+</div>
+</section>
+
+</div>
+</body>
+</html>
